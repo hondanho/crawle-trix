@@ -39,7 +39,7 @@ ADD config/ /app/
 
 ADD html/ /app/html/
 
-ADD crawl-config.yaml /app/
+ADD crawl-config-container.yml /app/
 
 ADD crawl.sh /app/
 

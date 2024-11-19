@@ -1,6 +1,0 @@
-seeds:
-  - https://www.text-compare.tools/
-
-combineWARC: false
-generateWACZ: false
-scopeType: any

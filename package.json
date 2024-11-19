@@ -1,9 +1,8 @@
 {
-  "name": "browsertrix-crawler",
+  "name": "crawler-trix",
   "version": "1.4.0-beta.0",
-  "main": "browsertrix-crawler",
+  "main": "crawler-trix",
   "type": "module",
-  "repository": "https://github.com/webrecorder/browsertrix-crawler",
   "author": "Ilya Kreymer <ikreymer@gmail.com>, Webrecorder Software",
   "license": "AGPL-3.0-or-later",
   "scripts": {

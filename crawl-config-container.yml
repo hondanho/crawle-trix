@@ -1,0 +1,15 @@
+url: https://www.lotuscosmeticsshop.com/
+redisStoreUrl: redis://redis:6379
+scopeType: domain
+overwrite: false
+generateWACZ: false
+workers: 1
+headless: false
+blockads: true
+waitUntil: domcontentloaded
+dryRun: false
+redisStoreClean: true
+collection: truyenhay
+saveState: always
+saveAllResources: true
+usingBrowser: true

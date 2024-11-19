@@ -1,6 +1,6 @@
-site_name: Browsertrix Crawler Docs
+site_name: Crawlertrix Docs
 repo_url: https://github.com/webrecorder/browsertrix-crawler/
-repo_name: Browsertrix Crawler
+repo_name: Crawlertrix
 edit_uri: edit/main/docs/docs/
 extra_css:
   - stylesheets/extra.css

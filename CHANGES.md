@@ -47,7 +47,7 @@ v0.7.0
 
 v0.6.0
 
-- Add a --waitOnDone option, which has browsertrix crawler wait when finished (for use with Browsertrix Cloud)
+- Add a --waitOnDone option, which has Crawlertrix wait when finished (for use with Browsertrix Cloud)
 - When running with redis shared state, set the :status field to running, failing/failed or done to let job controller know crawl is finished.
 - Set redis state to failing in case of exception, set to failed in case of >3 or more failed exits within 60 seconds (but don't mark as failed if all pages are finished and >0 pages.
 - When receiving a SIGUSR1, don't wait on down (assume final exit due to scale down).

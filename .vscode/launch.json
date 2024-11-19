@@ -4,7 +4,7 @@
         {
             "type": "node",
             "request": "launch",
-            "name": "Debug Browsertrix Crawler",
+            "name": "Debug Crawlertrix",
             "skipFiles": [
                 "<node_internals>/**"
             ],
@@ -16,36 +16,8 @@
                 "ts-node/esm"
             ],
             "args": [
-                "--url",
-                "https://www.lotuscosmeticsshop.com/",
-                "--redisStoreUrl",
-                "redis://127.0.0.1:6379",
-                "--scopeType",
-                "domain",
-                "--overwrite",
-                "false",
-                "--generateWACZ",
-                "false",
-                "--workers",
-                "1",
-                "--headless",
-                "false",
-                "--blockads",
-                "true",
-                // "--waitUntil",
-                // "domcontentloaded",
-                // "--dryRun",
-                // "false",
-                "--redisStoreClean",
-                "true",
-                // "--pageLimit",
-                // "2",
-                "--collection",
-                "test",
-                "--saveState",
-                "always",
-                "--saveAllResources",
-                "true"
+                "--config",
+                "./crawl-config.yml"
             ],
             "outFiles": [
                 "${workspaceFolder}/**/*.js"
