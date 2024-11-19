@@ -1,0 +1,3 @@
+- error docker-entrypoint.sh using: sed -i 's/\r$//' docker-entrypoint.sh then save replace
+- run redis: docker compose -f redis-compose.yml up -d
+- check redis: netstat -an | findstr 6379

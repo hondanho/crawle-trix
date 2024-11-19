@@ -1,0 +1,55 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Debug Browsertrix Crawler",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "program": "${workspaceFolder}/src/main.ts",
+            "runtimeArgs": [
+                "--trace-warnings",
+                "--no-warnings",
+                "--loader",
+                "ts-node/esm"
+            ],
+            "args": [
+                "--url",
+                "https://www.lotuscosmeticsshop.com/",
+                "--redisStoreUrl",
+                "redis://127.0.0.1:6379",
+                "--scopeType",
+                "domain",
+                "--overwrite",
+                "false",
+                "--generateWACZ",
+                "false",
+                "--workers",
+                "1",
+                "--headless",
+                "false",
+                "--blockads",
+                "true",
+                // "--waitUntil",
+                // "domcontentloaded",
+                // "--dryRun",
+                // "false",
+                "--redisStoreClean",
+                "true",
+                // "--pageLimit",
+                // "2",
+                "--collection",
+                "test",
+                "--saveState",
+                "always",
+                "--saveAllResources",
+                "true"
+            ],
+            "outFiles": [
+                "${workspaceFolder}/**/*.js"
+            ]
+        }
+    ]
+}
