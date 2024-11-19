@@ -1,10 +1,10 @@
 # Outputs
 
-This page covers the outputs created by Browsertrix Crawler for both crawls and browser profiles.
+This page covers the outputs created by Crawlertrix for both crawls and browser profiles.
 
 ## Crawl Outputs
 
-Browsertrix Crawler crawl outputs are organized into collections, which can be found in the `/crawls/collection` directory. Each crawl creates a new collection by default, which can be named with the `-c` or `--collection` argument. If a collection name is not provided, Browsertrix Crawler will generate a unique collection name which includes the `crawl-` prefix followed by a timestamp of when the collection was created. Collections can be overwritten by specifying an existing collection name.
+Crawlertrix crawl outputs are organized into collections, which can be found in the `/crawls/collection` directory. Each crawl creates a new collection by default, which can be named with the `-c` or `--collection` argument. If a collection name is not provided, Crawlertrix will generate a unique collection name which includes the `crawl-` prefix followed by a timestamp of when the collection was created. Collections can be overwritten by specifying an existing collection name.
 
 Each collection is a directory which contains at minimum:
 
@@ -22,4 +22,4 @@ Additionally, the collection may include:
 
 ## Profile Outputs
 
-Browser profiles that are saved by Browsertrix Crawler are written into the `crawls/profiles` directory.
+Browser profiles that are saved by Crawlertrix are written into the `crawls/profiles` directory.

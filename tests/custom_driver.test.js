@@ -4,7 +4,7 @@ import fs from "fs";
 test("ensure custom driver creates PDF", async () => {
   try {
     child_process.execSync(
-      "docker run -v $PWD/tests/fixtures:/tests/fixtures -v $PWD/test-crawls:/crawls webrecorder/browsertrix-crawler crawl --url https://old.webrecorder.net/ --collection custom-driver-1 --driver /tests/fixtures/driver-1.mjs --limit 1",
+      "docker run -v $PWD/tests/fixtures:/tests/fixtures -v $PWD/test-crawls:/crawls webrecorder/crawlertrix crawl --url https://old.webrecorder.net/ --collection custom-driver-1 --driver /tests/fixtures/driver-1.mjs --limit 1",
     );
   } catch (error) {
     console.log(error);

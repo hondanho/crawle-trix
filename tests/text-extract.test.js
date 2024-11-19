@@ -4,7 +4,7 @@ import child_process from "child_process";
 test("check that urn:text and urn:textfinal records are written to WARC", async () => {
   try {
     child_process.execSync(
-      "docker run -v $PWD/test-crawls:/crawls webrecorder/browsertrix-crawler crawl --collection text-extract --url https://www.nytimes.com/ --scopeType page --generateCDX --text to-warc,final-to-warc",
+      "docker run -v $PWD/test-crawls:/crawls webrecorder/crawlertrix crawl --collection text-extract --url https://www.nytimes.com/ --scopeType page --generateCDX --text to-warc,final-to-warc",
     );
   } catch (error) {
     //console.log(new TextDecoder().decode(error));

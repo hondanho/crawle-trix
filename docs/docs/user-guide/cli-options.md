@@ -1,6 +1,6 @@
 # All Command-Line Options
 
-The Browsertrix Crawler Docker image currently accepts the following parameters, broken down by entrypoint:
+The Crawlertrix Docker image currently accepts the following parameters, broken down by entrypoint:
 
 ## crawler
 

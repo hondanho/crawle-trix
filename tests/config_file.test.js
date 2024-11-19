@@ -9,7 +9,7 @@ const exec = util.promisify(execCallback);
 test("check yaml config file with seed list is used", async () => {
   try {
     await exec(
-      "docker run -v $PWD/test-crawls:/crawls -v $PWD/tests/fixtures:/tests/fixtures webrecorder/browsertrix-crawler crawl --config /tests/fixtures/crawl-1.yaml --depth 0",
+      "docker run -v $PWD/test-crawls:/crawls -v $PWD/tests/fixtures:/tests/fixtures webrecorder/crawlertrix crawl --config /tests/fixtures/crawl-1.yaml --depth 0",
     );
   } catch (error) {
     console.log(error);
@@ -50,7 +50,7 @@ test("check yaml config file with seed list is used", async () => {
 test("check yaml config file will be overwritten by command line", async () => {
   try {
     await exec(
-      "docker run -v $PWD/test-crawls:/crawls -v $PWD/tests/fixtures:/tests/fixtures webrecorder/browsertrix-crawler crawl --collection configtest-2 --config /tests/fixtures/crawl-1.yaml --url https://specs.webrecorder.net/ --scopeType page --timeout 20000",
+      "docker run -v $PWD/test-crawls:/crawls -v $PWD/tests/fixtures:/tests/fixtures webrecorder/crawlertrix crawl --collection configtest-2 --config /tests/fixtures/crawl-1.yaml --url https://specs.webrecorder.net/ --scopeType page --timeout 20000",
     );
   } catch (error) {
     console.log(error);

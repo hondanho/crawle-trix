@@ -9,7 +9,7 @@ test("run crawl", async() => {
   try {
     const configYaml = fs.readFileSync("tests/fixtures/crawl-2.yaml", "utf8");
     const proc = child_process.execSync(
-      "docker run -i -v $PWD/test-crawls:/crawls webrecorder/browsertrix-crawler crawl --config stdin --limit 1 --collection warcinfo --combineWARC",
+      "docker run -i -v $PWD/test-crawls:/crawls webrecorder/crawlertrix crawl --config stdin --limit 1 --collection warcinfo --combineWARC",
       { input: configYaml, stdin: "inherit", encoding: "utf8" },
     );
 
@@ -44,7 +44,7 @@ test("check that the warcinfo for individual WARC is as expected", async () => {
   expect(string.indexOf("operator: test")).toBeGreaterThan(-1);
   expect(string.indexOf("host: hostname")).toBeGreaterThan(-1);
   expect(
-    string.match(/Browsertrix-Crawler \d[\w.-]+ \(with warcio.js \d[\w.-]+\)/),
+    string.match(/crawlertrix \d[\w.-]+ \(with warcio.js \d[\w.-]+\)/),
   ).not.toEqual(null);
   expect(string.indexOf("format: WARC File Format 1.1")).toBeGreaterThan(-1);
 });
@@ -61,7 +61,7 @@ test("check that the warcinfo for combined WARC file is as expected", async () =
   expect(string.indexOf("operator: test")).toBeGreaterThan(-1);
   expect(string.indexOf("host: hostname")).toBeGreaterThan(-1);
   expect(
-    string.match(/Browsertrix-Crawler \d[\w.-]+ \(with warcio.js \d[\w.-]+\)/),
+    string.match(/crawlertrix \d[\w.-]+ \(with warcio.js \d[\w.-]+\)/),
   ).not.toEqual(null);
   expect(string.indexOf("format: WARC File Format 1.1")).toBeGreaterThan(-1);
 });

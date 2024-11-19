@@ -48,7 +48,7 @@ describe("socks5 + https proxy tests", () => {
         let status = 0;
 
         try {
-          execSync(`docker run -e PROXY_SERVER=${scheme}://proxy-no-auth:${port} --rm --network=proxy-test-net webrecorder/browsertrix-crawler crawl --url ${url} ${extraArgs}`, {encoding: "utf-8"});
+          execSync(`docker run -e PROXY_SERVER=${scheme}://proxy-no-auth:${port} --rm --network=proxy-test-net webrecorder/crawlertrix crawl --url ${url} ${extraArgs}`, {encoding: "utf-8"});
         } catch (e) {
           status = e.status;
         }
@@ -59,7 +59,7 @@ describe("socks5 + https proxy tests", () => {
         let status = 0;
 
         try {
-          execSync(`docker run -e PROXY_SERVER=${scheme}://user:passw0rd@proxy-with-auth:${port} --rm --network=proxy-test-net webrecorder/browsertrix-crawler crawl --url ${url} ${extraArgs}`, {encoding: "utf-8"});
+          execSync(`docker run -e PROXY_SERVER=${scheme}://user:passw0rd@proxy-with-auth:${port} --rm --network=proxy-test-net webrecorder/crawlertrix crawl --url ${url} ${extraArgs}`, {encoding: "utf-8"});
         } catch (e) {
           status = e.status;
         }
@@ -71,7 +71,7 @@ describe("socks5 + https proxy tests", () => {
         let status = 0;
 
         try {
-          execSync(`docker run -e PROXY_SERVER=${scheme}://user:passw1rd@proxy-with-auth:${port} --rm --network=proxy-test-net webrecorder/browsertrix-crawler crawl --url ${url} ${extraArgs}`, {encoding: "utf-8"});
+          execSync(`docker run -e PROXY_SERVER=${scheme}://user:passw1rd@proxy-with-auth:${port} --rm --network=proxy-test-net webrecorder/crawlertrix crawl --url ${url} ${extraArgs}`, {encoding: "utf-8"});
         } catch (e) {
           status = e.status;
         }
@@ -82,7 +82,7 @@ describe("socks5 + https proxy tests", () => {
         let status = 0;
 
         try {
-          execSync(`docker run -e PROXY_SERVER=${scheme}://user:passw1rd@proxy-with-auth:${scheme === "socks5" ? HTTP_PORT : SOCKS_PORT} --rm --network=proxy-test-net webrecorder/browsertrix-crawler crawl --url ${url} ${extraArgs}`, {encoding: "utf-8"});
+          execSync(`docker run -e PROXY_SERVER=${scheme}://user:passw1rd@proxy-with-auth:${scheme === "socks5" ? HTTP_PORT : SOCKS_PORT} --rm --network=proxy-test-net webrecorder/crawlertrix crawl --url ${url} ${extraArgs}`, {encoding: "utf-8"});
         } catch (e) {
           status = e.status;
         }
@@ -94,7 +94,7 @@ describe("socks5 + https proxy tests", () => {
       let status = 0;
 
       try {
-        execSync(`docker run -e PROXY_SERVER=${scheme}://proxy-no-auth:${WRONG_PORT} --rm --network=proxy-test-net webrecorder/browsertrix-crawler crawl --url ${HTML} ${extraArgs}`, {encoding: "utf-8"});
+        execSync(`docker run -e PROXY_SERVER=${scheme}://proxy-no-auth:${WRONG_PORT} --rm --network=proxy-test-net webrecorder/crawlertrix crawl --url ${HTML} ${extraArgs}`, {encoding: "utf-8"});
       } catch (e) {
         status = e.status;
       }
@@ -105,14 +105,14 @@ describe("socks5 + https proxy tests", () => {
 
 
 test("http proxy, PDF, separate env vars", () => {
-  execSync(`docker run -e PROXY_HOST=proxy-no-auth -e PROXY_PORT=${HTTP_PORT} --rm --network=proxy-test-net webrecorder/browsertrix-crawler crawl --url ${PDF} ${extraArgs}`, {encoding: "utf-8"});
+  execSync(`docker run -e PROXY_HOST=proxy-no-auth -e PROXY_PORT=${HTTP_PORT} --rm --network=proxy-test-net webrecorder/crawlertrix crawl --url ${PDF} ${extraArgs}`, {encoding: "utf-8"});
 });
 
 test("http proxy set, but not running, separate env vars", () => {
   let status = 0;
 
   try {
-    execSync(`docker run -e PROXY_HOST=proxy-no-auth -e PROXY_PORT=${WRONG_PORT} --rm --network=proxy-test-net webrecorder/browsertrix-crawler crawl --url ${PDF} ${extraArgs}`, {encoding: "utf-8"});
+    execSync(`docker run -e PROXY_HOST=proxy-no-auth -e PROXY_PORT=${WRONG_PORT} --rm --network=proxy-test-net webrecorder/crawlertrix crawl --url ${PDF} ${extraArgs}`, {encoding: "utf-8"});
   } catch (e) {
     status = e.status;
   }
@@ -123,7 +123,7 @@ test("http proxy set, but not running, cli arg", () => {
   let status = 0;
 
   try {
-    execSync(`docker run --rm --network=proxy-test-net webrecorder/browsertrix-crawler crawl --proxyServer http://proxy-no-auth:${WRONG_PORT} --url ${PDF} ${extraArgs}`, {encoding: "utf-8"});
+    execSync(`docker run --rm --network=proxy-test-net webrecorder/crawlertrix crawl --proxyServer http://proxy-no-auth:${WRONG_PORT} --url ${PDF} ${extraArgs}`, {encoding: "utf-8"});
   } catch (e) {
     status = e.status;
   }
@@ -132,7 +132,7 @@ test("http proxy set, but not running, cli arg", () => {
 
 
 test("ssh socks proxy with custom user", () => {
-  execSync(`docker run --rm --network=proxy-test-net -v $PWD/tests/fixtures/proxy-key:/keys/proxy-key webrecorder/browsertrix-crawler crawl --proxyServer ssh://user@ssh-proxy:2222 --sshProxyPrivateKeyFile /keys/proxy-key --url ${HTML} ${extraArgs}`, {encoding: "utf-8"});
+  execSync(`docker run --rm --network=proxy-test-net -v $PWD/tests/fixtures/proxy-key:/keys/proxy-key webrecorder/crawlertrix crawl --proxyServer ssh://user@ssh-proxy:2222 --sshProxyPrivateKeyFile /keys/proxy-key --url ${HTML} ${extraArgs}`, {encoding: "utf-8"});
 });
 
 
@@ -140,7 +140,7 @@ test("ssh socks proxy, wrong user", () => {
   let status = 0;
 
   try {
-    execSync(`docker run --rm --network=proxy-test-net webrecorder/browsertrix-crawler crawl --proxyServer ssh://ssh-proxy:2222 --url ${HTML} ${extraArgs}`, {encoding: "utf-8"});
+    execSync(`docker run --rm --network=proxy-test-net webrecorder/crawlertrix crawl --proxyServer ssh://ssh-proxy:2222 --url ${HTML} ${extraArgs}`, {encoding: "utf-8"});
   } catch (e) {
     status = e.status;
   }

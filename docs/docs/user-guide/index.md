@@ -1,18 +1,18 @@
-# Browsertrix Crawler User Guide
+# Crawlertrix User Guide
 
-Welcome to the Browsertrix Crawler User Guide. This page covers the basics of using Browsertrix Crawler, Webrecorder's browser-based high-fidelity crawling system, designed to run a complex, customizable, browser-based crawl in a single Docker container.
+Welcome to the Crawlertrix User Guide. This page covers the basics of using Crawlertrix, Webrecorder's browser-based high-fidelity crawling system, designed to run a complex, customizable, browser-based crawl in a single Docker container.
 
 ## Getting Started
 
-Browsertrix Crawler requires [Docker](https://docs.docker.com/get-docker/) to be installed on the machine running the crawl.
+Crawlertrix requires [Docker](https://docs.docker.com/get-docker/) to be installed on the machine running the crawl.
 
 Assuming Docker is installed, you can run a crawl and test your archive with the following steps.
 
-You don't even need to clone the Browsertrix Crawler repo, just choose a directory where you'd like the crawl data to be placed, and then run
+You don't even need to clone the Crawlertrix repo, just choose a directory where you'd like the crawl data to be placed, and then run
 the following commands. Replace `[URL]` with the website you'd like to crawl.
 
-1. Run `docker pull webrecorder/browsertrix-crawler`
-2. `docker run -v $PWD/crawls:/crawls/ -it webrecorder/browsertrix-crawler crawl --url [URL] --generateWACZ --text --collection test`
+1. Run `docker pull webrecorder/crawlertrix`
+2. `docker run -v $PWD/crawls:/crawls/ -it webrecorder/crawlertrix crawl --url [URL] --generateWACZ --text --collection test`
 3. The crawl will now run and logs in [JSON Lines](https://jsonlines.org/) format will be output to the console. Depending on the size of the site, this may take a bit!
 4. Once the crawl is finished, a WACZ file will be created in `crawls/collection/test/test.wacz` from the directory you ran the crawl!
 5. You can go to [ReplayWeb.page](https://replayweb.page) and open the generated WACZ file and browse your newly crawled archive!
@@ -33,12 +33,12 @@ Here's how you can use some of the more common command-line options to configure
 
 - To crawl into a new directory, specify a different name for the `--collection` param. If omitted, a new collection directory based on current time will be created. Adding the `--overwrite` flag will delete the collection directory at the start of the crawl, if it exists.
 
-Browsertrix Crawler includes a number of additional command-line options, explained in detail throughout this User Guide.
+Crawlertrix includes a number of additional command-line options, explained in detail throughout this User Guide.
 
 ## Published Releases / Production Use
 
-When using Browsertrix Crawler in production, it is recommended to use a specific, published version of the image, eg. `webrecorder/browsertrix-crawler:[VERSION]` instead of `webrecorder/browsertrix-crawler` where `[VERSION]` corresponds to one of the published release tag.
+When using Crawlertrix in production, it is recommended to use a specific, published version of the image, eg. `webrecorder/crawlertrix:[VERSION]` instead of `webrecorder/crawlertrix` where `[VERSION]` corresponds to one of the published release tag.
 
-All released Docker Images are available from [Docker Hub, listed by release tag here](https://hub.docker.com/r/webrecorder/browsertrix-crawler/tags?page=1&ordering=last_updated).
+All released Docker Images are available from [Docker Hub, listed by release tag here](https://hub.docker.com/r/webrecorder/crawlertrix/tags?page=1&ordering=last_updated).
 
-Details for each corresponding release tag are also available on GitHub under [Releases](https://github.com/webrecorder/browsertrix-crawler/releases).
+Details for each corresponding release tag are also available on GitHub under [Releases](https://github.com/webrecorder/crawlertrix/releases).

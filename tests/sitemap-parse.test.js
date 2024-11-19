@@ -30,7 +30,7 @@ async function waitContainer(containerId) {
 }
 
 async function runCrawl(numExpected, url, sitemap="", limit=0, numExpectedLessThan=0, extra="") {
-  const containerId = child_process.execSync(`docker run -d -p 36381:6379 -e CRAWL_ID=test webrecorder/browsertrix-crawler crawl --url ${url} --sitemap ${sitemap} --limit ${limit} --context sitemap --logging debug --debugAccessRedis ${extra}`, {encoding: "utf-8"});
+  const containerId = child_process.execSync(`docker run -d -p 36381:6379 -e CRAWL_ID=test webrecorder/crawlertrix crawl --url ${url} --sitemap ${sitemap} --limit ${limit} --context sitemap --logging debug --debugAccessRedis ${extra}`, {encoding: "utf-8"});
 
   await sleep(3000);
 

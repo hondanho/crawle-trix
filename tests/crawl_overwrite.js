@@ -3,11 +3,11 @@ import fs from "fs";
 
 test("ensure --overwrite with existing collection results in a successful crawl", async () => {
   child_process.execSync(
-    "docker run -v $PWD/test-crawls:/crawls webrecorder/browsertrix-crawler crawl --url http://www.example.com/ --generateWACZ  --collection overwrite",
+    "docker run -v $PWD/test-crawls:/crawls webrecorder/crawlertrix crawl --url http://www.example.com/ --generateWACZ  --collection overwrite",
   );
 
   child_process.execSync(
-    "docker run -v $PWD/test-crawls:/crawls webrecorder/browsertrix-crawler crawl --url http://www.example.com/ --generateWACZ  --collection overwrite --overwrite",
+    "docker run -v $PWD/test-crawls:/crawls webrecorder/crawlertrix crawl --url http://www.example.com/ --generateWACZ  --collection overwrite --overwrite",
   );
 });
 
@@ -27,7 +27,7 @@ test("check that the WACZ file exists in the collection", () => {
 
 test("ensure --overwrite results in a successful crawl even if collection didn't exist", async () => {
   child_process.execSync(
-    "docker run -v $PWD/test-crawls:/crawls webrecorder/browsertrix-crawler crawl --url http://www.example.com/ --generateWACZ  --collection overwrite-nothing --overwrite",
+    "docker run -v $PWD/test-crawls:/crawls webrecorder/crawlertrix crawl --url http://www.example.com/ --generateWACZ  --collection overwrite-nothing --overwrite",
   );
 });
 

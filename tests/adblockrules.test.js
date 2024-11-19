@@ -11,7 +11,7 @@ function runCrawl(name, config, commandExtra = "") {
 
   try {
     const proc = child_process.execSync(
-      `docker run -i -v $PWD/test-crawls:/crawls webrecorder/browsertrix-crawler crawl --config stdin ${commandExtra}`,
+      `docker run -i -v $PWD/test-crawls:/crawls webrecorder/crawlertrix crawl --config stdin ${commandExtra}`,
       { input: configYaml, stdin: "inherit", encoding: "utf8" },
     );
 

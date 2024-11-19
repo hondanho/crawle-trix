@@ -29,13 +29,13 @@ Any number of selectors can be specified in this way, and each will be applied i
 
 ## Ad Blocking
 
-Brave Browser, the browser used by Browsertrix Crawler for crawling, has some ad and tracker blocking features enabled by default. These [Shields](https://brave.com/shields/) be disabled or customized using [Browser Profiles](browser-profiles.md).
+Brave Browser, the browser used by Crawlertrix for crawling, has some ad and tracker blocking features enabled by default. These [Shields](https://brave.com/shields/) be disabled or customized using [Browser Profiles](browser-profiles.md).
 
-Browsertrix Crawler also supports blocking ads from being loaded during capture based on [Stephen Black's list of known ad hosts](https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts). To enable ad blocking based on this list, use the `--blockAds` option. If `--adBlockMessage` is set, a record with the specified error message will be added in the ad's place.
+Crawlertrix also supports blocking ads from being loaded during capture based on [Stephen Black's list of known ad hosts](https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts). To enable ad blocking based on this list, use the `--blockAds` option. If `--adBlockMessage` is set, a record with the specified error message will be added in the ad's place.
 
 ## Sitemap Parsing
 
-The `--sitemap` option can be used to have the crawler parse a sitemap and queue any found URLs while respecting the crawl's scoping rules and limits. Browsertrix Crawler is able to parse regular sitemaps as well as sitemap indices that point out to nested sitemaps.
+The `--sitemap` option can be used to have the crawler parse a sitemap and queue any found URLs while respecting the crawl's scoping rules and limits. Crawlertrix is able to parse regular sitemaps as well as sitemap indices that point out to nested sitemaps.
 
 By default, `--sitemap` will look for a sitemap at `<your-seed>/sitemap.xml`. If a website's sitemap is hosted at a different URL, pass the URL with the flag like `--sitemap <sitemap url>`.
 
@@ -64,7 +64,7 @@ via command-line:
 
 ## Screenshots
 
-Browsertrix Crawler includes the ability to take screenshots of each page crawled via the `--screenshot` option.
+Crawlertrix includes the ability to take screenshots of each page crawled via the `--screenshot` option.
 
 Three screenshot options are available:
 
@@ -78,19 +78,19 @@ Screenshots are written into a `screenshots.warc.gz` WARC file in the `archives/
 
 ## Screencasting
 
-Browsertrix Crawler includes a screencasting option which allows watching the crawl in real-time via screencast (connected via a websocket).
+Crawlertrix includes a screencasting option which allows watching the crawl in real-time via screencast (connected via a websocket).
 
 To enable, add `--screencastPort` command-line option and also map the port on the docker container. An example command might be:
 
 ```sh
-docker run -p 9037:9037 -v $PWD/crawls:/crawls/ webrecorder/browsertrix-crawler crawl  --url https://www.example.com --screencastPort 9037
+docker run -p 9037:9037 -v $PWD/crawls:/crawls/ webrecorder/crawlertrix crawl  --url https://www.example.com --screencastPort 9037
 ```
 
 Then, open `http://localhost:9037/` and watch the crawl!
 
 ## Text Extraction
 
-Browsertrix Crawler supports text extraction via the `--text` flag, which accepts one or more of the following extraction options:
+Crawlertrix supports text extraction via the `--text` flag, which accepts one or more of the following extraction options:
 
 - `--text to-pages` — Extract initial text and add it to the text field in pages.jsonl
 - `--text to-warc` — Extract initial page text and add it to a `urn:text:<url>` WARC resource record
@@ -101,7 +101,7 @@ are equivalent. For backwards compatibility, `--text` alone is equivalent to `--
 
 ## Uploading Crawl Outputs to S3-Compatible Storage
 
-Browsertrix Crawler includes support for uploading WACZ files to S3-compatible storage, and notifying a webhook when the upload succeeds.
+Crawlertrix includes support for uploading WACZ files to S3-compatible storage, and notifying a webhook when the upload succeeds.
 
 S3 upload is only supported when WACZ output is enabled and will not work for WARC output.
 
@@ -145,11 +145,11 @@ By default, the crawl state is only written when a crawl is interrupted before c
 
 ### Periodic State Saving
 
-When the `--saveState` is set to always, Browsertrix Crawler will also save the state automatically during the crawl, as set by the `--saveStateInterval` setting. The crawler will keep the last `--saveStateHistory` save states and delete older ones. This provides extra backup, in the event that the crawl fails unexpectedly or is not terminated via Ctrl-C, several previous crawl states are still available.
+When the `--saveState` is set to always, Crawlertrix will also save the state automatically during the crawl, as set by the `--saveStateInterval` setting. The crawler will keep the last `--saveStateHistory` save states and delete older ones. This provides extra backup, in the event that the crawl fails unexpectedly or is not terminated via Ctrl-C, several previous crawl states are still available.
 
 ## Crawl Interruption Options
 
-Browsertrix Crawler has different crawl interruption modes, and does everything it can to ensure the WARC data written is always valid when a crawl is interrupted. The following are three interruption scenarios:
+Crawlertrix has different crawl interruption modes, and does everything it can to ensure the WARC data written is always valid when a crawl is interrupted. The following are three interruption scenarios:
 
 ### 1. Graceful Shutdown
 

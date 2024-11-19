@@ -6,7 +6,7 @@ const testIf = (condition, ...args) => condition ? test(...args) : test.skip(...
 
 test("ensure multi url crawl run with docker run passes", async () => {
   child_process.execSync(
-    'docker run -v $PWD/test-crawls:/crawls webrecorder/browsertrix-crawler crawl --url https://www.iana.org/ --url https://old.webrecorder.net/ --generateWACZ --text --collection advanced --combineWARC --rolloverSize 10000 --workers 2 --title "test title" --description "test description" --pages 2 --limit 2 --exclude community',
+    'docker run -v $PWD/test-crawls:/crawls webrecorder/crawlertrix crawl --url https://www.iana.org/ --url https://old.webrecorder.net/ --generateWACZ --text --collection advanced --combineWARC --rolloverSize 10000 --workers 2 --title "test title" --description "test description" --pages 2 --limit 2 --exclude community',
   );
 });
 

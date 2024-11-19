@@ -5,7 +5,7 @@ import { WARCParser } from "warcio";
 
 test("run warc and ensure pageinfo records contain the correct resources", async () => {
   child_process.execSync(
-    "docker run -v $PWD/test-crawls:/crawls webrecorder/browsertrix-crawler crawl --url https://old.webrecorder.net/ --url https://old.webrecorder.net/about --url https://invalid.invalid/ --scopeType page --collection page-info-test --combineWARC",
+    "docker run -v $PWD/test-crawls:/crawls webrecorder/crawlertrix crawl --url https://old.webrecorder.net/ --url https://old.webrecorder.net/about --url https://invalid.invalid/ --scopeType page --collection page-info-test --combineWARC",
   );
 
   const filename = path.join(

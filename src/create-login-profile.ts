@@ -37,7 +37,7 @@ const behaviors = fs.readFileSync(
 
 function initArgs() {
   return yargs(process.argv)
-    .usage("browsertrix-crawler profile [options]")
+    .usage("crawlertrix profile [options]")
     .options({
       url: {
         describe: "The URL of the login page",
@@ -681,7 +681,7 @@ class InteractiveBrowser {
         } catch (e: any) {
           res.writeHead(500, { "Content-Type": "text/html" });
           res.end(
-            "<html><body>Profile creation failed! See the browsertrix-crawler console for more info",
+            "<html><body>Profile creation failed! See the crawlertrix console for more info",
           );
           logger.warn("HTTP Error", e);
         }

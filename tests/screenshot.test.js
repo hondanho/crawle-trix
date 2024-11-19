@@ -18,7 +18,7 @@ function screenshotWarcExists(name) {
 
 test("ensure basic crawl run with --screenshot passes", async () => {
   child_process.execSync(
-    "docker run -v $PWD/test-crawls:/crawls webrecorder/browsertrix-crawler crawl --collection test-with-screenshots --url http://www.example.com/ --screenshot view --workers 2",
+    "docker run -v $PWD/test-crawls:/crawls webrecorder/crawlertrix crawl --collection test-with-screenshots --url http://www.example.com/ --screenshot view --workers 2",
   );
 });
 
@@ -30,7 +30,7 @@ test("check that a screenshots warc file exists in the test collection", () => {
 
 test("ensure basic crawl run with --fullPageScreenshot passes", async () => {
   child_process.execSync(
-    "docker run -v $PWD/test-crawls:/crawls webrecorder/browsertrix-crawler crawl --collection fullpage --url http://www.example.com/ --screenshot fullPage --workers 2",
+    "docker run -v $PWD/test-crawls:/crawls webrecorder/crawlertrix crawl --collection fullpage --url http://www.example.com/ --screenshot fullPage --workers 2",
   );
 });
 
@@ -42,7 +42,7 @@ test("check that a screenshots warc file exists in the fullpage collection", () 
 
 test("ensure basic crawl run with --thumbnail passes", async () => {
   child_process.execSync(
-    "docker run -v $PWD/test-crawls:/crawls webrecorder/browsertrix-crawler crawl --collection thumbnail --url http://www.example.com/ --screenshot thumbnail --workers 2",
+    "docker run -v $PWD/test-crawls:/crawls webrecorder/crawlertrix crawl --collection thumbnail --url http://www.example.com/ --screenshot thumbnail --workers 2",
   );
 });
 
@@ -54,7 +54,7 @@ test("check that a screenshots warc file exists in the thumbnail collection", ()
 
 test("ensure basic crawl run with multiple screenshot types and --generateWACZ passes", async () => {
   child_process.execSync(
-    "docker run -v $PWD/test-crawls:/crawls webrecorder/browsertrix-crawler crawl --collection combined --url http://www.example.com/ --screenshot thumbnail,view,fullPage --generateWACZ --workers 2",
+    "docker run -v $PWD/test-crawls:/crawls webrecorder/crawlertrix crawl --collection combined --url http://www.example.com/ --screenshot thumbnail,view,fullPage --generateWACZ --workers 2",
   );
 });
 

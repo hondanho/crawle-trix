@@ -2,29 +2,29 @@
 
 v0.8.1
 
-- Logging and Behavior Tweaks by @ikreymer in https://github.com/webrecorder/browsertrix-crawler/pull/229
-- Fix typos by @stavares843 in https://github.com/webrecorder/browsertrix-crawler/pull/232
-- Add crawl log to WACZ by @ikreymer in https://github.com/webrecorder/browsertrix-crawler/pull/231
+- Logging and Behavior Tweaks by @ikreymer in https://github.com/webrecorder/crawlertrix/pull/229
+- Fix typos by @stavares843 in https://github.com/webrecorder/crawlertrix/pull/232
+- Add crawl log to WACZ by @ikreymer in https://github.com/webrecorder/crawlertrix/pull/231
 
 v0.8.0
 
 - Switch to Chrome/Chromium 109
 - Convert to ESM module
 - Add ad blocking via request interception (#173)
-- new setting: add support for specifying language via the --lang flag by @ikreymer in https://github.com/webrecorder/browsertrix-crawler/pull/186
-- Add screenshot functionality by @tw4l in https://github.com/webrecorder/browsertrix-crawler/pull/188
-- Remove dead pywb configuration by @edsu in https://github.com/webrecorder/browsertrix-crawler/pull/198
-- Use VNC for headful profile creation by @ikreymer in https://github.com/webrecorder/browsertrix-crawler/pull/197
-- arg parsing fix: by @ikreymer in https://github.com/webrecorder/browsertrix-crawler/pull/200
-- Improve crawler logging by @tw4l in https://github.com/webrecorder/browsertrix-crawler/pull/195
-- Add requests[socks] python dependency by @kuechensofa in https://github.com/webrecorder/browsertrix-crawler/pull/201
-- Add RedisCrawlState test by @tw4l in https://github.com/webrecorder/browsertrix-crawler/pull/208
-- crawl state: add getPendingList() to return pending state from either… by @ikreymer in https://github.com/webrecorder/browsertrix-crawler/pull/205
-- Serialize Redis pending pages as JSON objects by @tw4l in https://github.com/webrecorder/browsertrix-crawler/pull/212
-- behaviors: don't run behaviors in iframes that are about:blank or are… by @ikreymer in https://github.com/webrecorder/browsertrix-crawler/pull/211
-- Fix --overwrite CLI flag by @tw4l in https://github.com/webrecorder/browsertrix-crawler/pull/220
-- deps: bump pywb to 2.7.3 by @ikreymer in https://github.com/webrecorder/browsertrix-crawler/pull/222
-- update behaviors to 0.4.1, rename 'Behavior line' -> 'Behavior log' by @ikreymer in https://github.com/webrecorder/browsertrix-crawler/pull/223
+- new setting: add support for specifying language via the --lang flag by @ikreymer in https://github.com/webrecorder/crawlertrix/pull/186
+- Add screenshot functionality by @tw4l in https://github.com/webrecorder/crawlertrix/pull/188
+- Remove dead pywb configuration by @edsu in https://github.com/webrecorder/crawlertrix/pull/198
+- Use VNC for headful profile creation by @ikreymer in https://github.com/webrecorder/crawlertrix/pull/197
+- arg parsing fix: by @ikreymer in https://github.com/webrecorder/crawlertrix/pull/200
+- Improve crawler logging by @tw4l in https://github.com/webrecorder/crawlertrix/pull/195
+- Add requests[socks] python dependency by @kuechensofa in https://github.com/webrecorder/crawlertrix/pull/201
+- Add RedisCrawlState test by @tw4l in https://github.com/webrecorder/crawlertrix/pull/208
+- crawl state: add getPendingList() to return pending state from either… by @ikreymer in https://github.com/webrecorder/crawlertrix/pull/205
+- Serialize Redis pending pages as JSON objects by @tw4l in https://github.com/webrecorder/crawlertrix/pull/212
+- behaviors: don't run behaviors in iframes that are about:blank or are… by @ikreymer in https://github.com/webrecorder/crawlertrix/pull/211
+- Fix --overwrite CLI flag by @tw4l in https://github.com/webrecorder/crawlertrix/pull/220
+- deps: bump pywb to 2.7.3 by @ikreymer in https://github.com/webrecorder/crawlertrix/pull/222
+- update behaviors to 0.4.1, rename 'Behavior line' -> 'Behavior log' by @ikreymer in https://github.com/webrecorder/crawlertrix/pull/223
 
 v0.7.1
 

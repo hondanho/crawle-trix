@@ -123,5 +123,5 @@ export async function getInfoString() {
     ),
   );
 
-  return `Browsertrix-Crawler ${packageFileJSON.version} (with warcio.js ${warcioPackageJSON.version})`;
+  return `crawlertrix ${packageFileJSON.version} (with warcio.js ${warcioPackageJSON.version})`;
 }

@@ -11,7 +11,7 @@ const XML_REDIR = "https://www.webrecorder.net/feed.xml";
 
 test("PDF: ensure pdf is crawled", () => {
   child_process.execSync(
-    `docker run -v $PWD/test-crawls:/crawls  webrecorder/browsertrix-crawler crawl --url "${PDF}" --collection crawl-pdf`
+    `docker run -v $PWD/test-crawls:/crawls  webrecorder/crawlertrix crawl --url "${PDF}" --collection crawl-pdf`
   );
 });
 
@@ -43,7 +43,7 @@ test("PDF: check that individual WARCs have PDF written as 200 response", async 
 
 test("PDF: ensure pdf with redirect is crawled", () => {
   child_process.execSync(
-    `docker run -v $PWD/test-crawls:/crawls  webrecorder/browsertrix-crawler crawl --url "${PDF_HTTP}" --collection crawl-pdf --generateCDX`
+    `docker run -v $PWD/test-crawls:/crawls  webrecorder/crawlertrix crawl --url "${PDF_HTTP}" --collection crawl-pdf --generateCDX`
   );
 });
 
@@ -107,7 +107,7 @@ test("PDF: check that CDX contains one pdf 200, one 301 and one 200, two pageinf
 
 test("XML: ensure with and without redirect is crawled", () => {
   child_process.execSync(
-    `docker run -v $PWD/test-crawls:/crawls  webrecorder/browsertrix-crawler crawl --url "${XML}" --url "${XML_REDIR}" --collection crawl-xml --generateCDX`
+    `docker run -v $PWD/test-crawls:/crawls  webrecorder/crawlertrix crawl --url "${XML}" --url "${XML_REDIR}" --collection crawl-xml --generateCDX`
   );
 });
 

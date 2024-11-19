@@ -4,7 +4,7 @@ import fs from "fs";
 test("test custom selector crawls JS files as pages", async () => {
   try {
     child_process.execSync(
-      "docker run -v $PWD/test-crawls:/crawls webrecorder/browsertrix-crawler crawl --url https://www.iana.org/ --collection custom-sel-1 --selectLinks \"script[src]->src\"",
+      "docker run -v $PWD/test-crawls:/crawls webrecorder/crawlertrix crawl --url https://www.iana.org/ --collection custom-sel-1 --selectLinks \"script[src]->src\"",
     );
   } catch (error) {
     console.log(error);
@@ -56,7 +56,7 @@ test("test invalid selector, crawl fails", async () => {
   let failed = false;
   try {
     child_process.execSync(
-      "docker run -v $PWD/test-crawls:/crawls webrecorder/browsertrix-crawler crawl --url https://www.iana.org/ --collection custom-sel-invalid --selectLinks \"script[\"",
+      "docker run -v $PWD/test-crawls:/crawls webrecorder/crawlertrix crawl --url https://www.iana.org/ --collection custom-sel-invalid --selectLinks \"script[\"",
     );
   } catch (error) {
     failed = true;

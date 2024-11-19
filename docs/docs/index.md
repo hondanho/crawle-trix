@@ -14,7 +14,7 @@ Crawlertrix is a command line application responsible for the core features of [
 
 !!! note
 
-    This documentation applies to Crawlertrix versions 1.0.0 and above. Documentation for earlier versions of the crawler is available in the [Crawlertrix Github repository](https://github.com/webrecorder/browsertrix-crawler)'s README file in older commits.
+    This documentation applies to Crawlertrix versions 1.0.0 and above. Documentation for earlier versions of the crawler is available in the [Crawlertrix Github repository](https://github.com/webrecorder/crawlertrix)'s README file in older commits.
 
 ## Features
 
@@ -33,8 +33,8 @@ Crawlertrix is a command line application responsible for the core features of [
 
 ## Documentation
 
-If something is missing, unclear, or seems incorrect, please open an [issue](https://github.com/webrecorder/browsertrix-crawler/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-desc) and we'll try to make sure that your questions get answered here in the future!
+If something is missing, unclear, or seems incorrect, please open an [issue](https://github.com/webrecorder/crawlertrix/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-desc) and we'll try to make sure that your questions get answered here in the future!
 
 ## Code
 
-Crawlertrix is free and open source software, with all code available in the [main repository on Github](https://github.com/webrecorder/browsertrix-crawler).
+Crawlertrix is free and open source software, with all code available in the [main repository on Github](https://github.com/webrecorder/crawlertrix).

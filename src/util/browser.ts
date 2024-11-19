@@ -402,11 +402,15 @@ export class Browser {
     const defaultPath =
       executablePaths[process.platform as keyof typeof executablePaths];
 
-    this.browser = await puppeteer.launch({
-      ...launchOpts,
-      executablePath:
-        process.env.CHROME_PATH || defaultPath || this.getBrowserExe(),
-    });
+    if (process.platform !== "linux") {
+      launchOpts = {
+        ...launchOpts,
+        executablePath:
+          process.env.CHROME_PATH || defaultPath || this.getBrowserExe(),
+      };
+    }
+
+    this.browser = await puppeteer.launch(launchOpts);
 
     const target = this.browser.target();
 

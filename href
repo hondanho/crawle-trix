@@ -1,5 +1,5 @@
 
-> browsertrix-crawler@1.4.0-beta.0 start
+> crawlertrix@1.4.0-beta.0 start
 > node --trace-warnings --no-warnings --loader ts-node/esm src/main.ts --url https://example.com --overwrite true --selectLinks a[href]-
 
 {"timestamp":"2024-11-16T04:06:27.581Z","logLevel":"fatal","context":"general","message":"Invalid Link Extraction CSS Selector. Quitting","details":{"selector":"a[href]-"}}

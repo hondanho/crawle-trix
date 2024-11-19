@@ -19,7 +19,7 @@ afterAll(() => {
 test("run crawl without auth", () => {
   let status = 0;
   try {
-    execSync(`docker run --rm webrecorder/browsertrix-crawler crawl --url http://${DOCKER_HOST_NAME}:31501 --limit 2 --failOnFailedSeed`);
+    execSync(`docker run --rm webrecorder/crawlertrix crawl --url http://${DOCKER_HOST_NAME}:31501 --limit 2 --failOnFailedSeed`);
   } catch (e) {
     status = e.status;
   }
@@ -29,7 +29,7 @@ test("run crawl without auth", () => {
 test("run crawl with auth", () => {
   let status = 0;
   try {
-    execSync(`docker run --rm -v $PWD/test-crawls:/crawls webrecorder/browsertrix-crawler crawl --url http://user:pass@${DOCKER_HOST_NAME}:31501 --limit 2 --failOnFailedSeed --collection http-auth-test`);
+    execSync(`docker run --rm -v $PWD/test-crawls:/crawls webrecorder/crawlertrix crawl --url http://user:pass@${DOCKER_HOST_NAME}:31501 --limit 2 --failOnFailedSeed --collection http-auth-test`);
   } catch (e) {
     status = e.status;
   }
@@ -71,7 +71,7 @@ test("run crawl with auth config.yaml", () => {
 
   let status = 0;
   try {
-    execSync("docker run -i --rm -v $PWD/test-crawls:/crawls webrecorder/browsertrix-crawler crawl --config stdin",
+    execSync("docker run -i --rm -v $PWD/test-crawls:/crawls webrecorder/crawlertrix crawl --config stdin",
       { input: configYaml, stdin: "inherit", encoding: "utf8" });
 
   } catch (e) {

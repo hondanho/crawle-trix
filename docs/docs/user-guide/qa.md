@@ -2,26 +2,26 @@
 
 ## Overview
 
-Browsertrix Crawler can analyze an existing crawl to compare what the browser encountered on a website during crawling against the replay of the crawl WACZ. The WACZ produced by this analysis run includes additional comparison data (stored as WARC `resource` records) for the pages found during crawling against their replay in ReplayWeb.page. This works along several dimensions, including screenshot, extracted text, and page resource comparisons.
+Crawlertrix can analyze an existing crawl to compare what the browser encountered on a website during crawling against the replay of the crawl WACZ. The WACZ produced by this analysis run includes additional comparison data (stored as WARC `resource` records) for the pages found during crawling against their replay in ReplayWeb.page. This works along several dimensions, including screenshot, extracted text, and page resource comparisons.
 
 !!! note
 
-    QA features described on this page are available in Browsertrix Crawler releases 1.1.0 and later.
+    QA features described on this page are available in Crawlertrix releases 1.1.0 and later.
 
 ## Getting started
 
 To be able to run QA on a crawl, you must first have an existing crawl, for example:
 
 ```sh
-docker run -v $PWD/crawls:/crawls/ -it webrecorder/browsertrix-crawler crawl --url https://webrecorder.net/ --collection example-crawl --text to-warc --screenshot view --generateWACZ
+docker run -v $PWD/crawls:/crawls/ -it webrecorder/crawlertrix crawl --url https://webrecorder.net/ --collection example-crawl --text to-warc --screenshot view --generateWACZ
 ```
 
 Note that this crawl must be run with `--generateWACZ` flag as QA requires a WACZ to work with, and also ideally the `--text to-warc` and `--screenshot view` flags as well (see below for more details on comparison dimensions).
 
-To analyze this crawl, call Browsertrix Crawler with the `qa` entrypoint, passing the original crawl WACZ as the `qaSource`:
+To analyze this crawl, call Crawlertrix with the `qa` entrypoint, passing the original crawl WACZ as the `qaSource`:
 
 ```sh
-docker run -v $PWD/crawls/:/crawls/ -it webrecorder/browsertrix-crawler qa --qaSource /crawls/collections/example-crawl/example-crawl.wacz --collection example-qa --generateWACZ
+docker run -v $PWD/crawls/:/crawls/ -it webrecorder/crawlertrix qa --qaSource /crawls/collections/example-crawl/example-crawl.wacz --collection example-qa --generateWACZ
 ```
 
 The `qaSource` can be:

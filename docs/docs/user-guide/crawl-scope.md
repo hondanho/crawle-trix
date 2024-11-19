@@ -34,7 +34,7 @@ Extracted links that match the regular expression will be considered 'in scope' 
 
 ## Custom Scope Exclusion Rules
 
-In addition to the inclusion rules, Browsertrix Crawler supports a separate list of exclusion regexes, that if matched, override and exclude a URL from the crawl.
+In addition to the inclusion rules, Crawlertrix supports a separate list of exclusion regexes, that if matched, override and exclude a URL from the crawl.
 
 The exclusion regexes are often used with a custom scope, but could be used with a predefined scopeType as well.
 
@@ -96,13 +96,13 @@ The `include`, `exclude`, `scopeType`, and `depth` settings can be configured pe
 
 The per-seed settings override the per-crawl settings, if any.
 
-See the test suite [tests/scopes.test.js](https://github.com/webrecorder/browsertrix-crawler/blob/main/tests/scopes.test.js) for additional examples of configuring scope inclusion and exclusion rules.
+See the test suite [tests/scopes.test.js](https://github.com/webrecorder/crawlertrix/blob/main/tests/scopes.test.js) for additional examples of configuring scope inclusion and exclusion rules.
 
 !!! note
 
     Include and exclude rules are always regular expressions. For rules to match, you may have to escape special characters that commonly appear in urls like `?`, `+`, or `.` by placing a `\` before the character. For example: `youtube.com/watch\?rdwz7QiG0lk`.
 
-Browsertrix Crawler does not log excluded URLs.
+Crawlertrix does not log excluded URLs.
 
 ## Page Resource Block Rules
 
@@ -135,7 +135,7 @@ blockRules:
      inFrameUrl: example.com/no-analytics
 ```
 
-For additional examples of block rules, see the [tests/blockrules.test.js](https://github.com/webrecorder/browsertrix-crawler/blob/main/tests/blockrules.test.js) file in the test suite.
+For additional examples of block rules, see the [tests/blockrules.test.js](https://github.com/webrecorder/crawlertrix/blob/main/tests/blockrules.test.js) file in the test suite.
 
 If the `--blockMessage` is also specified, a blocked URL is replaced with the specified message (added as a WARC resource record).
 

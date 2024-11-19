@@ -1,5 +1,5 @@
 site_name: Crawlertrix Docs
-repo_url: https://github.com/webrecorder/browsertrix-crawler/
+repo_url: https://github.com/webrecorder/crawlertrix/
 repo_name: Crawlertrix
 edit_uri: edit/main/docs/docs/
 extra_css:
@@ -21,8 +21,8 @@ theme:
     - search.suggest
   palette:
     scheme: webrecorder
-  logo: assets/brand/browsertrix-crawler-white.svg
-  favicon: assets/brand/browsertrix-crawler-icon-color-dynamic.svg
+  logo: assets/brand/crawlertrix-white.svg
+  favicon: assets/brand/crawlertrix-icon-color-dynamic.svg
 
   icon:
     admonition:
