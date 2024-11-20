@@ -203,6 +203,9 @@ class Logger {
       case "yellow":
         console.log("\x1b[33m%s\x1b[0m", string);
         break;
+      case "pink":
+        console.log("\x1b[35m%s\x1b[0m", string);
+        break;
       default:
         console.log(string);
     }
@@ -254,6 +257,15 @@ class Logger {
     color = "yellow",
   ) {
     this.logAsJSONWithColor(message, data, context, "warn", color);
+  }
+
+  trace(
+    message: string,
+    data: unknown = {},
+    context: LogContext = "general",
+    color = "pink",
+  ) {
+    this.logAsJSONWithColor(message, data, context, "trace", color);
   }
 
   debug(

@@ -351,6 +351,12 @@ class ArgParser {
             "If set, output stats as JSON to this file. (Relative filename resolves to crawl working directory)",
         },
 
+        enableBehaviors: {
+          describe: "If set, enable behaviors on each page",
+          type: "boolean",
+          default: true,
+        },
+
         behaviors: {
           describe: "Which background behaviors to enable on each page",
           type: "array",
@@ -642,11 +648,17 @@ class ArgParser {
           type: "string",
         },
 
-        recrawl: {
+        recrawlUpdateData: {
           describe:
-            "Recrawl mode: 'all' to recrawl everything, 'failed' to recrawl failed/missing content, 'none' for normal operation",
+            "Recrawl mode: 'all' to recrawlUpdateData everything, 'failed' to recrawlUpdateData failed/missing content, 'none' for normal operation",
           type: "boolean",
           default: true,
+        },
+
+        setJavaScriptEnabled: {
+          describe: "If set, enable JavaScript execution",
+          type: "boolean",
+          default: true
         },
       });
   }
@@ -706,12 +718,16 @@ class ArgParser {
     }
 
     // background behaviors to apply
-    const behaviorOpts: { [key: string]: string | boolean } = {};
-    if (argv.behaviors.length > 0) {
-      argv.behaviors.forEach((x: string) => (behaviorOpts[x] = true));
-      behaviorOpts.log = BEHAVIOR_LOG_FUNC;
-      behaviorOpts.startEarly = true;
-      argv.behaviorOpts = JSON.stringify(behaviorOpts);
+    if (argv.enableBehaviors) {
+      const behaviorOpts: { [key: string]: string | boolean } = {};
+      if (argv.behaviors.length > 0) {
+        argv.behaviors.forEach((x: string) => (behaviorOpts[x] = true));
+        behaviorOpts.log = BEHAVIOR_LOG_FUNC;
+        behaviorOpts.startEarly = true;
+        argv.behaviorOpts = JSON.stringify(behaviorOpts);
+      } else {
+        argv.behaviorOpts = "";
+      }
     } else {
       argv.behaviorOpts = "";
     }

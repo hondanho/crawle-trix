@@ -31,6 +31,8 @@ Options:
                                                            [number] [default: 0]
       --pageLimit, --limit                  Limit crawl to this number of pages
                                                            [number] [default: 0]
+      --setJavaScriptEnabled                 If set, enable JavaScript execution
+                                                      [boolean] [default: true]
       --maxPageLimit                        Maximum pages to crawl, overriding
                                             pageLimit if both are set
                                                            [number] [default: 0]
@@ -50,8 +52,8 @@ Options:
                                             e-page-application crawling or when
                                             different hashtags load dynamic cont
                                             ent
-      --recrawl                             Recrawl mode: 'all' to recrawl every
-                                            thing, 'failed' to recrawl failed/
+      --recrawlUpdateData                             Recrawl mode: 'all' to recrawlUpdateData every
+                                            thing, 'failed' to recrawlUpdateData failed/
                                             missing content, 'none' for normal o
                                             peration
                                                       [boolean] [default: true]
@@ -145,6 +147,9 @@ Options:
       --statsFilename                       If set, output stats as JSON to this
                                              file. (Relative filename resolves t
                                             o crawl working directory)  [string]
+      --enableBehaviors                        If set, enable behaviors on each page
+                                             (overrides --behaviors)
+                                                      [boolean] [default: false]
       --behaviors                           Which background behaviors to enable
                                              on each page
   [array] [choices: "autoplay", "autofetch", "autoscroll", "siteSpecific"] [defa

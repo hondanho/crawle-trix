@@ -2,6 +2,6 @@
 - run redis: docker compose -f redis-compose.yml up -d
 - check redis: netstat -an | findstr 6379
 - run crawlertrix container: docker compose -f docker-compose.yml up -d 
-  cmd: crawl --config ./collections/truyenhay/crawl-config-container.yml
+  cmd: crawl --config ./crawl-config-container.yml
 - run in windows: docker compose -f redis-compose.yml up -d 
   

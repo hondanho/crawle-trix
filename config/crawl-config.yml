@@ -1,0 +1,74 @@
+url: https://truyensex.moe/12-nu-than/
+
+redisStoreUrl: redis://127.0.0.1:6379
+redisStoreClean: true
+
+overwrite: false
+generateWACZ: false
+headless: true
+blockads: true
+waitUntil: domcontentloaded
+dryRun: false
+collection: truyenhay
+saveState: never
+saveAllResources: true
+
+setJavaScriptEnabled: false # tương tác bằng js
+enableBehaviors: false # tương tác bằng js
+
+scopeType: custom
+# page: Chỉ crawl chính xác URL được chỉ định
+# page-spa: Giống "page" nhưng cho phép URLs có cùng path với hash khác nhau
+# prefix: Crawl tất cả URLs bắt đầu bằng URL seed
+# custom chỉ dùng cho include
+# host: Crawl tất cả URLs từ cùng hostname
+# domain: Crawl tất cả URLs từ cùng domain và subdomain
+# any: Crawl tất cả URLs từ bất kỳ nơi nào
+# custom: Chỉ dùng cho include
+
+workers: 2
+pageLimit: 10
+depth: 1 # sâu bao nhiêu 
+#Depth = 0: Chỉ crawl các URL seed (URL gốc) được cung cấp
+#Depth = 1: Crawl URL seed và các link trực tiếp từ trang seed
+#Depth = 2: Crawl thêm một cấp độ nữa từ các link ở depth=1
+exclude:
+  - https://truyensex.moe/gioi-thieu/
+  - https://truyensex.moe/gioi-thieu/.*
+  - https://truyensex.moe/quan-tri-huyen/
+  - https://truyensex.moe/quan-tri-huyen/.*
+  - https://truyensex.moe/tag/
+  - https://truyensex.moe/tag/.*
+include:
+  - https://truyensex.moe/12-nu-than/
+  - https://truyensex.moe/12-nu-than/.*
+# "--url",
+# "https://www.lotuscosmeticsshop.com/",
+# "--redisStoreUrl",
+# "redis://127.0.0.1:6379",
+# "--scopeType",
+# "domain",
+# "--overwrite",
+# "false",
+# "--generateWACZ",
+# "false",
+# "--workers",
+# "1",
+# "--headless",
+# "false",
+# "--blockads",
+# "true",
+# // "--waitUntil",
+# // "domcontentloaded",
+# // "--dryRun",
+# // "false",
+# "--redisStoreClean",
+# "true",
+# // "--pageLimit",
+# // "2",
+# "--collection",
+# "test",
+# "--saveState",
+# "always",
+# "--saveAllResources",
+# "true"

@@ -1776,9 +1776,11 @@ self.__bx_behaviors.selectMainBehavior();
     const originUrl = new URL(url);
     const originDomain = originUrl.origin;
     const doCrawl =
-      !this.params.recrawl || this.shouldRecrawl(url, this.archivesDir);
+      !this.params.recrawlUpdateData || this.shouldRecrawl(url, this.archivesDir);
 
     const logDetails = data.logDetails;
+
+    data.skipBehaviors = !this.params.enableBehaviors;
 
     // Attempt to load the page:
     // - Already tried direct fetch w/o browser before getting here, and that resulted in an HTML page or non-200 response
@@ -1817,23 +1819,54 @@ self.__bx_behaviors.selectMainBehavior();
       data.loadState = LoadState.CONTENT_LOADED;
     });
 
-    if (doCrawl) {
-      // Lắng nghe tất cả request
-      page.on("request", (request) => {
-        const type = request.resourceType();
-        if (
-          ["image", "stylesheet", "script"].includes(type) &&
-          request.url().startsWith(originDomain)
-        ) {
-          this.resources.push({
-            url: request.url(),
-            type: type,
-          });
+    await page.setRequestInterception(true);
+
+    if (!this.params.setJavaScriptEnabled) {
+      await page.setJavaScriptEnabled(false);
+    }
+
+    page.on("request", async (request) => {
+      const requestUrl = request.url();
+      const resourceType = request.resourceType();
+
+      try {
+        // Trường hợp 1: Request HTML chính từ domain gốc
+        if (requestUrl === url) {
+          await request.continue();
+          return;
         }
 
-        request.continueRequestOverrides();
-      });
+        // Trường hợp 2: doCrawl = false - chỉ load HTML, chặn mọi resource khác
+        if (!doCrawl) {
+          await request.abort();
+        }
 
+        // Trường hợp 3: doCrawl = true - cho phép load resource từ domain gốc
+        if (requestUrl.startsWith(originDomain)) {
+          if (["document", "script", "stylesheet", "image"].includes(resourceType)) {
+            this.resources.push({
+              url: requestUrl,
+              type: resourceType
+            });
+            await request.continue();
+          } else {
+            await request.abort();
+          }
+        } else {
+          // Chặn mọi request từ domain khác
+          await request.abort();
+        }
+
+      } catch (e) {
+        try {
+          await request.continue();
+        } catch (err) {
+          // Bỏ qua lỗi nếu request đã được xử lý
+        }
+      }
+    });
+
+    if (doCrawl) {
       // Lắng nghe response để lấy data
       page.on("response", async (response) => {
         const request = response.request();
@@ -1847,10 +1880,10 @@ self.__bx_behaviors.selectMainBehavior();
           if (resource) {
             resource.response = response;
           }
+        } else {
+          logger.trace("Response other", response.url());
         }
       });
-
-      await page.setRequestInterception(true);
     }
 
     const gotoOpts = data.isHTMLPage

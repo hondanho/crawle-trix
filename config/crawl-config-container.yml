@@ -13,3 +13,4 @@ collection: truyenhay
 saveState: always
 saveAllResources: true
 usingBrowser: true
+setJavaScriptEnabled: false
