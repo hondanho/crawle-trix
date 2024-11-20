@@ -10,7 +10,7 @@ import {
 import { rxEscape } from "./seeds.js";
 import { CDPSession, Page } from "puppeteer-core";
 import { PageState, WorkerId } from "./state.js";
-import { Crawler } from "../crawler.js";
+import { Crawler } from "../services/crawler.js";
 
 const MAX_REUSE = 5;
 

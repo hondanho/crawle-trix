@@ -2,12 +2,16 @@
 
 import { logger } from "./util/logger.js";
 import { setExitOnRedisError } from "./util/redis.js";
-import { Crawler } from "./crawler.js";
+import { Crawler } from "./services/crawler.js";
+import connectDB from "./db.js";
+import { seedDatabase } from "./seeddata.js";
+import dotenv from "dotenv";
 
 let crawler: Crawler | null = null;
 
 let lastSigInt = 0;
 let forceTerm = false;
+dotenv.config();
 
 async function handleTerminate(signame: string) {
   logger.info(`${signame} received...`);
@@ -49,6 +53,12 @@ process.on("SIGABRT", async () => {
   forceTerm = true;
 });
 
+// init database
+await connectDB();
+await seedDatabase();
+
+// Khởi động các service khác
+console.log("Database connected. Starting services...");
 crawler = new Crawler();
 
 await crawler.run();

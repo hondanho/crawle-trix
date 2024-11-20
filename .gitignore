@@ -10,3 +10,5 @@ dist
 scratch/
 venv/
 docs/venv/
+mongo_data/
+.env

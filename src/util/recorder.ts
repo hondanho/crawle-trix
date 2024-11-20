@@ -17,7 +17,7 @@ import { TempFileBuffer, WARCSerializer } from "warcio/node";
 import { WARCWriter } from "./warcwriter.js";
 import { RedisCrawlState, WorkerId } from "./state.js";
 import { CDPSession, Protocol } from "puppeteer-core";
-import { Crawler } from "../crawler.js";
+import { Crawler } from "../services/crawler.js";
 
 const MAX_BROWSER_DEFAULT_FETCH_SIZE = 5_000_000;
 const MAX_TEXT_REWRITE_SIZE = 25_000_000;

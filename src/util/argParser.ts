@@ -658,7 +658,7 @@ class ArgParser {
         setJavaScriptEnabled: {
           describe: "If set, enable JavaScript execution",
           type: "boolean",
-          default: true
+          default: true,
         },
       });
   }

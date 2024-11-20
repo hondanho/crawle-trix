@@ -1,7 +1,10 @@
 - error docker-entrypoint.sh using: sed -i 's/\r$//' docker-entrypoint.sh then save replace
 - run redis: docker compose -f redis-compose.yml up -d
 - check redis: netstat -an | findstr 6379
-- run crawlertrix container: docker compose -f docker-compose.yml up -d 
-  cmd: crawl --config ./crawl-config-container.yml
-- run in windows: docker compose -f redis-compose.yml up -d 
-  
+- run:
+  container: docker compose -f docker-compose-base.yml -f docker-compose.yml up -d 
+    cmd: crawl --config ./config/crawl-config-container.yml
+  windows: docker compose -f docker-compose-base.yml up -d 
+    cmd: crawl --config ./config/crawl-config.yml
+    hoặc chạy f5 trong vscode .vscode/launch.json
+

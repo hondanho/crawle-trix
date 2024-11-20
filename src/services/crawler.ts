@@ -10,13 +10,13 @@ import {
   QueueState,
   PageState,
   WorkerId,
-} from "./util/state.js";
+} from "../util/state.js";
 
-import { CrawlerArgs, parseArgs } from "./util/argParser.js";
+import { CrawlerArgs, parseArgs } from "../util/argParser.js";
 
 import yaml from "js-yaml";
 
-import { HealthChecker } from "./util/healthcheck.js";
+import { HealthChecker } from "../util/healthcheck.js";
 import {
   // initStorage,
   getDirSize,
@@ -25,20 +25,20 @@ import {
   // S3StorageSync,
   downloadAllResources,
   downloadResourceFromUrl,
-} from "./util/storage.js";
+} from "../util/storage.js";
 // import { ScreenCaster, WSTransport } from "./util/screencaster.js";
-import { initRedis } from "./util/redis.js";
-import { logger, formatErr, LogDetails } from "./util/logger.js";
+import { initRedis } from "../util/redis.js";
+import { logger, formatErr, LogDetails } from "../util/logger.js";
 import {
   WorkerOpts,
   WorkerState,
   closeWorkers,
   runWorkers,
-} from "./util/worker.js";
-import { sleep, timedRun, secondsElapsed } from "./util/timing.js";
-import { collectCustomBehaviors, getInfoString } from "./util/file_reader.js";
+} from "../util/worker.js";
+import { sleep, timedRun, secondsElapsed } from "../util/timing.js";
+import { collectCustomBehaviors, getInfoString } from "../util/file_reader.js";
 
-import { Browser } from "./util/browser.js";
+import { Browser } from "../util/browser.js";
 
 import {
   ADD_LINK_FUNC,
@@ -47,10 +47,10 @@ import {
   ExtractSelector,
   PAGE_OP_TIMEOUT_SECS,
   SITEMAP_INITIAL_FETCH_TIMEOUT_SECS,
-} from "./util/constants.js";
+} from "../util/constants.js";
 
-import { AdBlockRules, BlockRuleDecl, BlockRules } from "./util/blockrules.js";
-import { OriginOverride } from "./util/originoverride.js";
+import { AdBlockRules, BlockRuleDecl, BlockRules } from "../util/blockrules.js";
+import { OriginOverride } from "../util/originoverride.js";
 
 import {
   CDPSession,
@@ -60,22 +60,22 @@ import {
   Page,
   Protocol,
 } from "puppeteer-core";
-import { SitemapReader } from "./util/sitemapper.js";
-import { ScopedSeed } from "./util/seeds.js";
+import { SitemapReader } from "../util/sitemapper.js";
+import { ScopedSeed } from "../util/seeds.js";
 import {
   // WARCWriter,
   // createWARCInfo,
   // setWARCInfo,
   streamFinish,
-} from "./util/warcwriter.js";
-import { isHTMLMime, isRedirectStatus } from "./util/reqresp.js";
-import { initProxy } from "./util/proxy.js";
-import { Recorder } from "./util/recorder.js";
-import { collectLinkAssets } from "./util/dom.js";
+} from "../util/warcwriter.js";
+import { isHTMLMime, isRedirectStatus } from "../util/reqresp.js";
+import { initProxy } from "../util/proxy.js";
+import { Recorder } from "../util/recorder.js";
+import { collectLinkAssets } from "../util/dom.js";
 
 const behaviors = fs.readFileSync(
   new URL(
-    "../node_modules/browsertrix-behaviors/dist/behaviors.js",
+    "../../node_modules/browsertrix-behaviors/dist/behaviors.js",
     import.meta.url,
   ),
   { encoding: "utf8" },
@@ -346,7 +346,12 @@ export class Crawler {
   }
 
   async initCrawlState() {
-    const redisUrl = this.params.redisStoreUrl || "redis://localhost:6379/0";
+    let redisUrl;
+    if (process.platform !== "linux") {
+      redisUrl = process.env.REDIS_URL || this.params.redisStoreUrl || "redis://localhost:6379/0";
+    } else {
+      redisUrl = process.env.REDIS_URL_DOCKER || this.params.redisStoreUrl || "redis://localhost:6379/0";
+    }
 
     if (!redisUrl.startsWith("redis://")) {
       logger.fatal(
@@ -493,7 +498,12 @@ export class Crawler {
   async bootstrap() {
     const subprocesses: ChildProcess[] = [];
 
-    const redisUrl = this.params.redisStoreUrl || "redis://localhost:6379/0";
+    let redisUrl;
+    if (process.platform !== "linux") {
+      redisUrl = process.env.REDIS_URL || this.params.redisStoreUrl || "redis://localhost:6379/0";
+    } else {
+      redisUrl = process.env.REDIS_URL_DOCKER || this.params.redisStoreUrl || "redis://localhost:6379/0";
+    }
 
     if (
       redisUrl.startsWith("redis://localhost:") ||
@@ -1776,7 +1786,8 @@ self.__bx_behaviors.selectMainBehavior();
     const originUrl = new URL(url);
     const originDomain = originUrl.origin;
     const doCrawl =
-      !this.params.recrawlUpdateData || this.shouldRecrawl(url, this.archivesDir);
+      !this.params.recrawlUpdateData ||
+      this.shouldRecrawl(url, this.archivesDir);
 
     const logDetails = data.logDetails;
 
@@ -1843,10 +1854,12 @@ self.__bx_behaviors.selectMainBehavior();
 
         // Trường hợp 3: doCrawl = true - cho phép load resource từ domain gốc
         if (requestUrl.startsWith(originDomain)) {
-          if (["document", "script", "stylesheet", "image"].includes(resourceType)) {
+          if (
+            ["document", "script", "stylesheet", "image"].includes(resourceType)
+          ) {
             this.resources.push({
               url: requestUrl,
-              type: resourceType
+              type: resourceType,
             });
             await request.continue();
           } else {
@@ -1856,7 +1869,6 @@ self.__bx_behaviors.selectMainBehavior();
           // Chặn mọi request từ domain khác
           await request.abort();
         }
-
       } catch (e) {
         try {
           await request.continue();
