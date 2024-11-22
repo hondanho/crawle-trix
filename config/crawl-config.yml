@@ -26,8 +26,8 @@ scopeType: custom
 # any: Crawl tất cả URLs từ bất kỳ nơi nào
 # custom: Chỉ dùng cho include
 
-workers: 2
-pageLimit: 10
+workers: 1
+pageLimit: 2
 depth: 1 # sâu bao nhiêu 
 #Depth = 0: Chỉ crawl các URL seed (URL gốc) được cung cấp
 #Depth = 1: Crawl URL seed và các link trực tiếp từ trang seed
@@ -42,6 +42,7 @@ exclude:
 include:
   - https://truyensex.moe/12-nu-than/
   - https://truyensex.moe/12-nu-than/.*
+statsFilename: stats.json
 # "--url",
 # "https://www.lotuscosmeticsshop.com/",
 # "--redisStoreUrl",

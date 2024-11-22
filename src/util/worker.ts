@@ -2,15 +2,10 @@ import os from "os";
 
 import { logger, formatErr } from "./logger.js";
 import { sleep, timedRun } from "./timing.js";
-import {
-  DirectFetchRequest,
-  DirectFetchResponse,
-  Recorder,
-} from "./recorder.js";
 import { rxEscape } from "./seeds.js";
 import { CDPSession, Page } from "puppeteer-core";
 import { PageState, WorkerId } from "./state.js";
-import { Crawler } from "../services/crawler.js";
+import { Crawler } from "../services/crawler/index.js";
 
 const MAX_REUSE = 5;
 
@@ -24,9 +19,6 @@ export type WorkerOpts = {
   workerid: WorkerId;
   // eslint-disable-next-line @typescript-eslint/ban-types
   callbacks: Record<string, Function>;
-  directFetchCapture:
-    | ((request: DirectFetchRequest) => Promise<DirectFetchResponse>)
-    | null;
   markPageUsed: () => void;
   frameIdToExecId: Map<string, number>;
   isAuthSet?: boolean;
@@ -62,8 +54,6 @@ export class PageWorker {
   markCrashed?: (reason: string) => void;
   crashBreak?: Promise<void>;
 
-  recorder: Recorder | null;
-
   constructor(
     id: WorkerId,
     crawler: Crawler,
@@ -76,31 +66,11 @@ export class PageWorker {
     this.alwaysReuse = alwaysReuse;
 
     this.logDetails = { workerid: this.id };
-
-    this.recorder = this.crawler.createRecorder(this.id);
   }
 
   async closePage() {
     if (!this.page) {
       return;
-    }
-
-    if (this.recorder) {
-      await this.recorder.onClosePage();
-    }
-
-    if (!this.crashed && this.opts) {
-      try {
-        // await timedRun(
-        //   this.crawler.teardownPage(this.opts),
-        //   TEARDOWN_TIMEOUT,
-        //   "Page Teardown Timed Out",
-        //   this.logDetails,
-        //   "worker",
-        // );
-      } catch (e) {
-        // ignore
-      }
     }
 
     try {
@@ -175,15 +145,11 @@ export class PageWorker {
         this.page = page;
         this.cdp = cdp;
         this.callbacks = {};
-        const directFetchCapture = this.recorder
-          ? (req: DirectFetchRequest) => this.recorder!.directFetchCapture(req)
-          : null;
         this.opts = {
           page,
           cdp,
           workerid,
           callbacks: this.callbacks,
-          directFetchCapture,
           frameIdToExecId: new Map<string, number>(),
           markPageUsed: () => {
             if (!this.alwaysReuse) {
@@ -191,10 +157,6 @@ export class PageWorker {
             }
           },
         };
-
-        if (this.recorder) {
-          await this.recorder.onCreatePage(this.opts);
-        }
 
         // updated per page crawl
         this.crashed = false;
@@ -248,8 +210,8 @@ export class PageWorker {
         await sleep(0.5);
         logger.warn("Retrying getting new page", this.logDetails, "worker");
 
-        if (this.crawler.healthChecker) {
-          this.crawler.healthChecker.incError();
+        if (this.crawler.configManager.config.healthChecker) {
+          this.crawler.configManager.config.healthChecker.incError();
         }
       }
     }
@@ -259,24 +221,17 @@ export class PageWorker {
 
   async crawlPage(opts: WorkerState) {
     const res = await this.crawler.crawlPage(opts);
-    if (this.recorder) {
-      await this.recorder.awaitPageResources();
-    }
     return res;
   }
 
   async timedCrawlPage(opts: WorkerState) {
     const workerid = this.id;
     const { data } = opts;
-    const { url, pageid } = data;
+    const { url } = data;
 
     logger.info("Starting page", { workerid, page: url }, "worker");
 
     this.logDetails = { page: url, workerid };
-
-    if (this.recorder) {
-      this.recorder.startPage({ pageid, url });
-    }
 
     try {
       await Promise.race([
@@ -301,18 +256,6 @@ export class PageWorker {
 
       await this.closePage();
     } finally {
-      try {
-        if (this.recorder) {
-          opts.data.ts = this.recorder.writePageInfoRecord();
-        }
-      } catch (e) {
-        logger.error(
-          "Error writing pageinfo recorder",
-          { ...formatErr(e), ...this.logDetails },
-          "recorder",
-        );
-      }
-
       await timedRun(
         this.crawler.pageFinished(data),
         FINISHED_TIMEOUT,
@@ -342,19 +285,13 @@ export class PageWorker {
     }
   }
 
-  async finalize(waitTime?: number) {
-    if (this.recorder) {
-      await this.recorder.onDone(waitTime ?? this.maxPageTime);
-    }
-  }
-
   async runLoop() {
-    const crawlState = this.crawler.crawlState;
+    const crawlState = this.crawler.stateManager.crawlState;
 
     let loggedWaiting = false;
 
     while (await this.crawler.isCrawlRunning()) {
-      await crawlState.processMessage(this.crawler.params.scopedSeeds);
+      await crawlState.processMessage(this.crawler.configManager.config.seeds);
 
       const data = await crawlState.nextFromQueue();
 
@@ -439,11 +376,4 @@ export async function runWorkers(
   await Promise.allSettled(workers.map((worker) => worker.run()));
 
   await crawler.browser.close();
-
-  await closeWorkers();
-}
-
-// ===========================================================================
-export function closeWorkers(waitTime?: number) {
-  return Promise.allSettled(workers.map((worker) => worker.finalize(waitTime)));
 }

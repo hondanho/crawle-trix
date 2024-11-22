@@ -19,7 +19,7 @@ import {
 } from "./constants.js";
 import { ScopedSeed } from "./seeds.js";
 import { interpolateFilename } from "./storage.js";
-import { screenshotTypes } from "./screenshots.js";
+
 import {
   DEFAULT_EXCLUDE_LOG_CONTEXTS,
   LOG_CONTEXT_TYPES,
@@ -398,15 +398,6 @@ class ArgParser {
           describe:
             "Path or HTTP(S) URL to tar.gz file which contains the browser profile directory",
           type: "string",
-        },
-
-        screenshot: {
-          describe:
-            "Screenshot options for crawler, can include: view, thumbnail, fullPage",
-          type: "array",
-          default: [],
-          choices: Array.from(Object.keys(screenshotTypes)),
-          coerce,
         },
 
         screencastPort: {

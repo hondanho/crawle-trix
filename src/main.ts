@@ -2,10 +2,11 @@
 
 import { logger } from "./util/logger.js";
 import { setExitOnRedisError } from "./util/redis.js";
-import { Crawler } from "./services/crawler.js";
+import { Crawler } from "./services/crawler/index.js";
 import connectDB from "./db.js";
 import { seedDatabase } from "./seeddata.js";
 import dotenv from "dotenv";
+import { CrawlerArgs, parseArgs } from "./util/argParser.js";
 
 let crawler: Crawler | null = null;
 
@@ -15,12 +16,12 @@ dotenv.config();
 
 async function handleTerminate(signame: string) {
   logger.info(`${signame} received...`);
-  if (!crawler || !crawler.crawlState) {
+  if (!crawler || !crawler.stateManager.crawlState) {
     logger.error("error: no crawler running, exiting");
     process.exit(1);
   }
 
-  if (crawler.done) {
+  if (await crawler.stateManager.crawlState.isFinished()) {
     logger.info("success: crawler done, exiting");
     process.exit(0);
   }
@@ -30,12 +31,12 @@ async function handleTerminate(signame: string) {
   try {
     await crawler.checkCanceled();
 
-    if (!crawler.interrupted) {
+    if (!crawler.configManager.config.interrupted) {
       logger.info("SIGNAL: gracefully finishing current pages...");
       crawler.gracefulFinishOnInterrupt();
     } else if (forceTerm || Date.now() - lastSigInt > 200) {
       logger.info("SIGNAL: stopping crawl now...");
-      await crawler.serializeAndExit();
+      await crawler.setStatusAndExit(0, "canceled");
     }
     lastSigInt = Date.now();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -56,9 +57,9 @@ process.on("SIGABRT", async () => {
 // init database
 await connectDB();
 await seedDatabase();
+// await scheduleJobs();
 
-// Khởi động các service khác
-console.log("Database connected. Starting services...");
-crawler = new Crawler();
-
-await crawler.run();
+const params = parseArgs() as CrawlerArgs;
+crawler = new Crawler(params);
+await crawler.init();
+await crawler.crawl();

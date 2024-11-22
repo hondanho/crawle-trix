@@ -18,16 +18,21 @@ import yaml from "js-yaml";
 
 import { HealthChecker } from "../util/healthcheck.js";
 import {
+  // initStorage,
   getDirSize,
+  // interpolateFilename,
   checkDiskUtilization,
+  // S3StorageSync,
   downloadAllResources,
   downloadResourceFromUrl,
 } from "../util/storage.js";
+// import { ScreenCaster, WSTransport } from "./util/screencaster.js";
 import { initRedis } from "../util/redis.js";
 import { logger, formatErr, LogDetails } from "../util/logger.js";
 import {
   WorkerOpts,
   WorkerState,
+  closeWorkers,
   runWorkers,
 } from "../util/worker.js";
 import { sleep, timedRun, secondsElapsed } from "../util/timing.js";
@@ -57,8 +62,10 @@ import {
 } from "puppeteer-core";
 import { SitemapReader } from "../util/sitemapper.js";
 import { ScopedSeed } from "../util/seeds.js";
+import { streamFinish } from "../util/warcwriter.js";
 import { isHTMLMime, isRedirectStatus } from "../util/reqresp.js";
 import { initProxy } from "../util/proxy.js";
+// import { Recorder } from "../util/recorder.js";
 import { collectLinkAssets } from "../util/dom.js";
 
 const behaviors = fs.readFileSync(
@@ -70,6 +77,20 @@ const behaviors = fs.readFileSync(
 );
 
 const RUN_DETACHED = process.env.DETACHED_CHILD_PROC == "1";
+
+// type PageEntry = {
+//   id: string;
+//   url: string;
+//   title?: string;
+//   loadState?: number;
+//   mime?: string;
+//   seed?: boolean;
+//   text?: string;
+//   favIconUrl?: string;
+//   ts?: string;
+//   status?: number;
+//   depth?: number;
+// };
 
 // ============================================================================
 export class Crawler {
@@ -114,13 +135,24 @@ export class Crawler {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   gotoOpts: Record<string, any>;
 
+  // pagesDir: string;
+
   archivesDir: string;
+  // warcCdxDir: string;
+  // indexesDir: string;
+
+  // screenshotWriter: WARCWriter | null;
+  // textWriter: WARCWriter | null;
 
   blockRules: BlockRules | null;
   adBlockRules: AdBlockRules | null;
 
   healthChecker: HealthChecker | null = null;
   originOverride: OriginOverride | null = null;
+
+  // screencaster: ScreenCaster | null = null;
+
+  skipTextDocs = 0;
 
   interrupted = false;
   browserCrashed = false;
@@ -129,11 +161,14 @@ export class Crawler {
   done = false;
   postCrawling = false;
 
+  textInPages = false;
+
   customBehaviors = "";
   behaviorsChecked = false;
   behaviorLastLine?: string;
 
   browser: Browser;
+  // storage: S3StorageSync | null = null;
 
   maxHeapUsed = 0;
   maxHeapTotal = 0;
@@ -148,6 +183,8 @@ export class Crawler {
         crawler: Crawler;
       }) => Promise<void>)
     | null = null;
+
+  recording: boolean;
 
   constructor() {
     const args = this.parseArgs();
@@ -180,6 +217,13 @@ export class Crawler {
     }
 
     logger.debug("Writing log to: " + this.logFilename, {}, "general");
+
+    this.recording = !this.params.dryRun;
+    if (this.params.dryRun) {
+      logger.warn(
+        "Dry run mode: no archived data stored, only pages and logging. Storage and archive creation related options will be ignored.",
+      );
+    }
 
     this.headers = {};
 
@@ -214,12 +258,27 @@ export class Crawler {
 
     this.emulateDevice = this.params.emulateDevice || {};
 
+    // this.captureBasePrefix = `http://${process.env.PROXY_HOST}:${process.env.PROXY_PORT}/${this.params.collection}/record`;
+    // this.capturePrefix = "";//process.env.NO_PROXY ? "" : this.captureBasePrefix + "/id_/";
+    // this.captureBasePrefix = "";
+
     this.gotoOpts = {
       waitUntil: this.params.waitUntil,
       timeout: this.params.pageLoadTimeout * 1000,
     };
 
+    // pages directory
+    // this.pagesDir = path.join(this.collDir, "pages");
+
+    // archives dir
     this.archivesDir = path.join(this.collDir, "archive");
+
+    // indexes dirs
+    // this.warcCdxDir = path.join(this.collDir, "warc-cdx");
+    // this.indexesDir = path.join(this.collDir, "indexes");
+
+    // this.screenshotWriter = null;
+    // this.textWriter = null;
 
     this.blockRules = null;
     this.adBlockRules = null;
@@ -229,6 +288,8 @@ export class Crawler {
     this.interrupted = false;
     this.finalExit = false;
     this.uploadAndDeleteLocal = false;
+
+    this.textInPages = this.params.text.includes("to-pages");
 
     this.done = false;
 
@@ -359,6 +420,29 @@ export class Crawler {
     }
   }
 
+  // initScreenCaster() {
+  //   let transport;
+
+  //   if (this.params.screencastPort) {
+  //     transport = new WSTransport(this.params.screencastPort);
+  //     logger.debug(
+  //       `Screencast server started on: ${this.params.screencastPort}`,
+  //       {},
+  //       "screencast",
+  //     );
+  //   }
+  //   // } else if (this.params.redisStoreUrl && this.params.screencastRedis) {
+  //   //   transport = new RedisPubSubTransport(this.params.redisStoreUrl, this.crawlId);
+  //   //   logger.debug("Screencast enabled via redis pubsub", {}, "screencast");
+  //   // }
+
+  //   if (!transport) {
+  //     return null;
+  //   }
+
+  //   return new ScreenCaster(transport, this.params.workers);
+  // }
+
   launchRedis() {
     // Kiểm tra Redis đã chạy chưa
     try {
@@ -396,14 +480,39 @@ export class Crawler {
 
   async bootstrap() {
     const subprocesses: ChildProcess[] = [];
+
+    let redisUrl;
+    if (process.platform !== "linux") {
+      redisUrl =
+        process.env.REDIS_URL ||
+        this.params.redisStoreUrl ||
+        "redis://localhost:6379/0";
+    } else {
+      redisUrl =
+        process.env.REDIS_URL_DOCKER ||
+        this.params.redisStoreUrl ||
+        "redis://localhost:6379/0";
+    }
+
+    if (
+      redisUrl.startsWith("redis://localhost:") ||
+      redisUrl.startsWith("redis://127.0.0.1:")
+    ) {
+      // subprocesses.push(this.launchRedis());
+    }
+
     await fsp.mkdir(this.logDir, { recursive: true });
 
-    await fsp.mkdir(this.archivesDir, { recursive: true });
+    if (!this.params.dryRun) {
+      await fsp.mkdir(this.archivesDir, { recursive: true });
+      // await fsp.mkdir(this.warcCdxDir, { recursive: true });
+    }
 
     this.logFH = fs.createWriteStream(this.logFilename, { flags: "a" });
     logger.setExternalLogStream(this.logFH);
 
     this.infoString = await getInfoString();
+    // setWARCInfo(this.infoString, this.params.warcInfo);
     logger.info(this.infoString);
 
     this.proxyServer = await initProxy(this.params, RUN_DETACHED);
@@ -475,6 +584,13 @@ export class Crawler {
         logger.debug("Skipping Xvfb on Windows platform");
       }
     }
+
+    // if (this.params.screenshot && !this.params.dryRun) {
+    //   this.screenshotWriter = this.createExtraResourceWarcWriter("screenshots");
+    // }
+    // if (this.params.text && !this.params.dryRun) {
+    //   this.textWriter = this.createExtraResourceWarcWriter("text");
+    // }
   }
 
   extraChromeArgs() {
@@ -654,6 +770,11 @@ export class Crawler {
       });
     }
 
+    // if (this.screencaster) {
+    //   logger.debug("Start Screencast", { workerid }, "screencast");
+    //   await this.screencaster.screencastPage(page, cdp, workerid);
+    // }
+
     await page.exposeFunction(
       ADD_LINK_FUNC,
       (url: string) => callbacks.addLink && callbacks.addLink(url),
@@ -764,7 +885,7 @@ self.__bx_behaviors.selectMainBehavior();
   async crawlPage(opts: WorkerState): Promise<void> {
     await this.writeStats();
 
-    const { page, data, workerid, callbacks } = opts;
+    const { page, cdp, data, workerid, callbacks, directFetchCapture } = opts;
     data.callbacks = callbacks;
 
     const { url, seedId } = data;
@@ -781,6 +902,61 @@ self.__bx_behaviors.selectMainBehavior();
     const logDetails = { page: url, workerid };
     data.logDetails = logDetails;
     data.workerid = workerid;
+
+    if (directFetchCapture) {
+      try {
+        const headers = auth
+          ? { Authorization: auth, ...this.headers }
+          : this.headers;
+
+        const result = await timedRun(
+          directFetchCapture({ url, headers, cdp }),
+          this.params.pageLoadTimeout,
+          "Direct fetch of page URL timed out",
+          logDetails,
+          "fetch",
+        );
+
+        // fetched timed out, already logged, don't retry in browser
+        if (!result) {
+          return;
+        }
+
+        const { fetched, mime, ts } = result;
+
+        if (mime) {
+          data.mime = mime;
+          data.isHTMLPage = isHTMLMime(mime);
+        }
+        if (fetched) {
+          data.loadState = LoadState.FULL_PAGE_LOADED;
+          data.status = 200;
+          data.ts = ts || new Date();
+          logger.info(
+            "Direct fetch successful",
+            { url, mime, ...logDetails },
+            "fetch",
+          );
+          return;
+        }
+      } catch (e) {
+        if (e instanceof Error && e.message === "response-filtered-out") {
+          // filtered out direct fetch
+          logger.debug(
+            "Direct fetch response not accepted, continuing with browser fetch",
+            logDetails,
+            "fetch",
+          );
+        } else {
+          logger.error(
+            "Direct fetch of page URL failed",
+            { e, ...logDetails },
+            "fetch",
+          );
+          return;
+        }
+      }
+    }
 
     opts.markPageUsed();
 
@@ -822,6 +998,44 @@ self.__bx_behaviors.selectMainBehavior();
 
     const logDetails = { page: url, workerid };
 
+    // if (this.params.screenshot && this.screenshotWriter) {
+    //   const screenshots = new Screenshots({
+    //     browser: this.browser,
+    //     page,
+    //     url,
+    //     writer: ,
+    //     // writer: this.screenshotWriter,
+    //   });
+    //   if (this.params.screenshot.includes("view")) {
+    //     await screenshots.take("view", saveOutput ? data : null);
+    //   }
+    //   if (this.params.screenshot.includes("fullPage")) {
+    //     await screenshots.takeFullPage();
+    //   }
+    //   if (this.params.screenshot.includes("thumbnail")) {
+    //     await screenshots.takeThumbnail();
+    //   }
+    // }
+
+    // let textextract = null;
+
+    // if (this.textWriter) {
+    //   textextract = new TextExtractViaSnapshot(cdp, {
+    //     writer: this.textWriter,
+    //     url,
+    //     skipDocs: this.skipTextDocs,
+    //   });
+    //   const { text } = await textextract.extractAndStoreText(
+    //     "text",
+    //     false,
+    //     this.params.text.includes("to-warc"),
+    //   );
+
+    //   if (text !== null && (this.textInPages || saveOutput)) {
+    //     data.text = text;
+    //   }
+    // }
+
     data.loadState = LoadState.EXTRACTION_DONE;
 
     if (this.params.behaviorOpts && data.status < 400) {
@@ -848,6 +1062,10 @@ self.__bx_behaviors.selectMainBehavior();
         if (res) {
           data.loadState = LoadState.BEHAVIORS_DONE;
         }
+
+        // if (textextract && this.params.text.includes("final-to-warc")) {
+        //   await textextract.extractAndStoreText("textFinal", true, true);
+        // }
       }
     }
   }
@@ -902,6 +1120,19 @@ self.__bx_behaviors.selectMainBehavior();
       await this.checkLimits();
     }
   }
+
+  // async teardownPage({ workerid }: WorkerOpts) {
+  //   if (this.screencaster) {
+  //     await this.screencaster.stopById(workerid);
+  //   }
+  // }
+
+  // async workerIdle(workerid: WorkerId) {
+  //   if (this.screencaster) {
+  //     //logger.debug("End Screencast", {workerid}, "screencast");
+  //     await this.screencaster.stopById(workerid, true);
+  //   }
+  // }
 
   async runBehaviors(
     page: Page,
@@ -1118,6 +1349,8 @@ self.__bx_behaviors.selectMainBehavior();
 
     if (this.interrupted) {
       await this.browser.close();
+      await closeWorkers(0);
+      await this.closeFiles();
       if (!this.done) {
         await this.setStatusAndExit(13, "interrupted");
         return;
@@ -1191,6 +1424,10 @@ self.__bx_behaviors.selectMainBehavior();
       return;
     }
 
+    // if (this.params.generateWACZ) {
+    //   this.storage = initStorage();
+    // }
+
     if (await this.crawlState.isCrawlStopped()) {
       logger.info("crawl stopped, running post-crawl tasks");
       this.finalExit = true;
@@ -1217,6 +1454,8 @@ self.__bx_behaviors.selectMainBehavior();
         this.params.blockMessage,
       );
     }
+
+    // this.screencaster = this.initScreenCaster();
 
     if (this.params.originOverride && this.params.originOverride.length) {
       this.originOverride = new OriginOverride(
@@ -1247,6 +1486,7 @@ self.__bx_behaviors.selectMainBehavior();
         this.browserCrashed = true;
       },
 
+      recording: this.recording,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any);
 
@@ -1257,6 +1497,8 @@ self.__bx_behaviors.selectMainBehavior();
 
     await this.serializeConfig(true);
 
+    await this.closeFiles();
+
     await this.writeStats();
 
     // if crawl has been stopped, mark as final exit for post-crawl tasks
@@ -1265,6 +1507,15 @@ self.__bx_behaviors.selectMainBehavior();
     }
 
     await this.postCrawl();
+  }
+
+  async closeFiles() {
+    // if (this.textWriter) {
+    //   await this.textWriter.flush();
+    // }
+    // if (this.screenshotWriter) {
+    //   await this.screenshotWriter.flush();
+    // }
   }
 
   protected async _addInitialSeeds() {
@@ -1308,8 +1559,100 @@ self.__bx_behaviors.selectMainBehavior();
     if (!this.logFH) {
       return;
     }
+    const logFH = this.logFH;
     this.logFH = null;
+    await streamFinish(logFH);
   }
+
+  // async generateWACZ() {
+  //   logger.info("Generating WACZ");
+  //   await this.crawlState.setStatus("generate-wacz");
+
+  //   // Get a list of the warcs inside
+  //   const warcFileList = await fsp.readdir(this.archivesDir);
+
+  //   // is finished (>0 pages and all pages written)
+  //   const isFinished = await this.crawlState.isFinished();
+
+  //   logger.info(`Num WARC Files: ${warcFileList.length}`);
+  //   if (!warcFileList.length) {
+  //     // if finished, just return
+  //     if (isFinished || (await this.crawlState.isCrawlCanceled())) {
+  //       return;
+  //     }
+  //     // if stopped, won't get anymore data
+  //     if (await this.crawlState.isCrawlStopped()) {
+  //       // possibly restarted after committing, so assume done here!
+  //       if ((await this.crawlState.numDone()) > 0) {
+  //         return;
+  //       }
+  //     }
+  //     // fail crawl otherwise
+  //     logger.fatal("No WARC Files, assuming crawl failed");
+  //   }
+
+  //   const waczPath = path.join(this.collDir, this.params.collection + ".wacz");
+
+  //   const streaming = !!this.storage;
+
+  //   if (!streaming) {
+  //     logger.debug("WACZ will be written to disk", { path: waczPath }, "wacz");
+  //   } else {
+  //     logger.debug("WACZ will be stream uploaded to remote storage");
+  //   }
+
+  //   logger.debug("End of log file in WACZ, storing logs to WACZ file");
+
+  //   await this.closeLog();
+
+  //   // const waczOpts: WACZInitOpts = {
+  //   //   input: warcFileList.map((x) => path.join(this.archivesDir, x)),
+  //   //   output: waczPath,
+  //   //   pages: this.pagesDir,
+  //   //   logDirectory: this.logDir,
+  //   //   // warcCdxDir: this.warcCdxDir,
+  //   //   indexesDir: this.indexesDir,
+  //   //   softwareString: this.infoString,
+  //   // };
+
+  //   // if (process.env.WACZ_SIGN_URL) {
+  //   //   waczOpts.signingUrl = process.env.WACZ_SIGN_URL;
+  //   //   if (process.env.WACZ_SIGN_TOKEN) {
+  //   //     waczOpts.signingToken = "bearer " + process.env.WACZ_SIGN_TOKEN;
+  //   //   }
+  //   // }
+
+  //   if (this.params.title) {
+  //     // waczOpts.title = this.params.title;
+  //   }
+
+  //   if (this.params.description) {
+  //     // waczOpts.description = this.params.description;
+  //   }
+
+  //   try {
+  //     const wacz = new WACZ(waczOpts, this.collDir);
+  //     if (!streaming) {
+  //       await wacz.generateToFile(waczPath);
+  //     }
+
+  //     if (this.storage) {
+  //       await this.crawlState.setStatus("uploading-wacz");
+  //       const filename = process.env.STORE_FILENAME || "@ts-@id.wacz";
+  //       const targetFilename = interpolateFilename(filename, this.crawlId);
+
+  //       await this.storage.uploadCollWACZ(wacz, targetFilename, isFinished);
+  //       return true;
+  //     }
+
+  //     return false;
+  //   } catch (e) {
+  //     logger.error("Error creating WACZ", e);
+  //     if (!streaming) {
+  //       logger.fatal("Unable to write WACZ successfully");
+  //     }
+  //   }
+  // }
 
   logMemory() {
     const memUsage = process.memoryUsage();
@@ -1924,6 +2267,104 @@ self.__bx_behaviors.selectMainBehavior();
     return false;
   }
 
+  // async initPages(filename: string, title: string) {
+  //   let fh = null;
+
+  //   try {
+  //     // await fsp.mkdir(this.pagesDir, { recursive: true });
+
+  //     const createNew = !fs.existsSync(filename);
+
+  //     fh = fs.createWriteStream(filename, { flags: "a" });
+
+  //     if (createNew) {
+  //       const header: Record<string, string> = {
+  //         format: "json-pages-1.0",
+  //         id: "pages",
+  //         title,
+  //       };
+  //       header.hasText = this.params.text.includes("to-pages") + "";
+  //       if (this.params.text.length) {
+  //         logger.debug("Text Extraction: " + this.params.text.join(","));
+  //       } else {
+  //         logger.debug("Text Extraction: None");
+  //       }
+  //       fh.write(JSON.stringify(header) + "\n");
+  //     }
+  //   } catch (err) {
+  //     logger.error(`"${filename}" creation failed`, err);
+  //   }
+  //   return fh;
+  // }
+
+  // protected pageEntryForRedis(
+  //   entry: Record<string, string | number | boolean | object>,
+  //   // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  //   state: PageState,
+  // ) {
+  //   return entry;
+  // }
+
+  // async writePage(state: PageState) {
+  //   const {
+  //     pageid,
+  //     url,
+  //     depth,
+  //     title,
+  //     text,
+  //     loadState,
+  //     mime,
+  //     favicon,
+  //     status,
+  //   } = state;
+
+  //   const row: PageEntry = { id: pageid, url, title, loadState };
+
+  //   let { ts } = state;
+  //   if (!ts) {
+  //     ts = new Date();
+  //     if (!this.params.dryRun) {
+  //       logger.warn(
+  //         "Page date missing, setting to now",
+  //         { url, ts },
+  //         "pageStatus",
+  //       );
+  //     }
+  //   }
+
+  //   row.ts = ts.toISOString();
+
+  //   if (mime) {
+  //     row.mime = mime;
+  //   }
+
+  //   if (status) {
+  //     row.status = status;
+  //   }
+
+  //   // if (this.params.writePagesToRedis) {
+  //   //   await this.crawlState.writeToPagesQueue(
+  //   //     JSON.stringify(this.pageEntryForRedis(row, state)),
+  //   //   );
+  //   // }
+
+  //   if (depth === 0) {
+  //     row.seed = true;
+  //   }
+
+  //   if (Number.isInteger(depth)) {
+  //     row.depth = depth;
+  //   }
+
+  //   if (text && this.textInPages) {
+  //     row.text = text;
+  //   }
+
+  //   if (favicon) {
+  //     row.favIconUrl = favicon;
+  //   }
+  // }
+
   async parseSitemap({ url, sitemap }: ScopedSeed, seedId: number) {
     if (!sitemap) {
       return;
@@ -2082,7 +2523,46 @@ self.__bx_behaviors.selectMainBehavior();
         logger.error(`Failed to delete old save state file: ${oldFilename}`);
       }
     }
+
+    // if (this.storage && done && this.params.saveState === "always") {
+    //   const targetFilename = interpolateFilename(filenameOnly, this.crawlId);
+
+    //   await this.storage.uploadFile(filename, targetFilename);
+    // }
   }
+
+  // createRecorder(id: number): Recorder | null {
+  //   console.log("createRecorder", id);
+  //   return null;
+  //   // if (!this.recording) {
+  //   //   return null;
+  //   // }
+
+  //   // const filenameBase = `${this.getWarcPrefix("rec")}$ts-${id}`;
+
+  //   // const writer = this.createWarcWriter(filenameBase, true, {
+  //   //   id: id.toString(),
+  //   // });
+
+  //   // const res = new Recorder({
+  //   //   workerid: id,
+  //   //   crawler: this,
+  //   //   writer,
+  //   // });
+
+  //   // this.browser.recorders.push(res);
+  //   // return res;
+  // }
+
+  // protected getArchiveFilename(url: string): string {
+  //   // Tạo tên file an toàn từ URL
+  //   const sanitized = url
+  //     .replace(/^https?:\/\//, "")
+  //     .replace(/[^a-zA-Z0-9]/g, "_")
+  //     .substring(0, 200); // Giới hạn độ dài
+
+  //   return `${sanitized}_${Date.now()}.html`;
+  // }
 }
 
 function getDownloadResponse(req: HTTPRequest) {

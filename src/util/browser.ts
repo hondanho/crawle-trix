@@ -6,7 +6,7 @@ import { Readable } from "node:stream";
 import os from "os";
 import path from "path";
 
-import { formatErr, LogContext, logger } from "./logger.js";
+import { LogContext, logger } from "./logger.js";
 import { initStorage } from "./storage.js";
 
 import { DISPLAY, type ServiceWorkerOpt } from "./constants.js";
@@ -19,7 +19,6 @@ import puppeteer, {
   Viewport,
 } from "puppeteer-core";
 import { CDPSession, Target, Browser as PptrBrowser } from "puppeteer-core";
-import { Recorder } from "./recorder.js";
 
 type BtrixChromeOpts = {
   proxy?: string;
@@ -57,8 +56,6 @@ export class Browser {
   browser?: PptrBrowser | null = null;
   firstCDP: CDPSession | null = null;
 
-  recorders: Recorder[] = [];
-
   swOpt?: ServiceWorkerOpt = "disabled";
 
   constructor() {
@@ -72,8 +69,7 @@ export class Browser {
     headless = false,
     emulateDevice = {},
     swOpt = "disabled",
-    ondisconnect = null,
-    recording = true,
+    ondisconnect = null
   }: LaunchOpts) {
     if (this.isLaunched()) {
       return;
@@ -89,9 +85,6 @@ export class Browser {
 
     const args = this.chromeArgs(chromeOptions);
 
-    if (recording) {
-      args.push("--disable-site-isolation-trials");
-    }
 
     if (!headless) {
       args.push(`--display=${DISPLAY}`);
@@ -104,7 +97,7 @@ export class Browser {
 
       defaultViewport = {
         width: Number(geom[0]),
-        height: Number(geom[1]) - (recording ? 0 : BROWSER_HEIGHT_OFFSET),
+        height: Number(geom[1]) - BROWSER_HEIGHT_OFFSET,
       };
     }
 
@@ -122,9 +115,7 @@ export class Browser {
       defaultViewport,
       waitForInitialPage: false,
       userDataDir: this.profileDir,
-      targetFilter: recording
-        ? undefined
-        : (target) => this.targetFilter(target),
+      targetFilter: (target) => this.targetFilter(target),
     };
     await this._init(launchOpts, ondisconnect);
   }
@@ -493,60 +484,6 @@ export class Browser {
     return { page, cdp };
   }
 
-  async browserContextFetch() {
-    if (!this.firstCDP) {
-      return;
-    }
-
-    this.firstCDP.on("Fetch.requestPaused", async (params) => {
-      const { frameId, requestId, request } = params;
-
-      const { url } = request;
-
-      if (!this.firstCDP) {
-        throw new Error("CDP missing");
-      }
-
-      let foundRecorder = null;
-
-      for (const recorder of this.recorders) {
-        if (recorder.swUrls.has(url)) {
-          recorder.swFrameIds.add(frameId);
-        }
-
-        if (recorder.hasFrame(frameId)) {
-          foundRecorder = recorder;
-          break;
-        }
-      }
-
-      if (!foundRecorder) {
-        logger.warn(
-          "Skipping URL from unknown frame",
-          { url, frameId },
-          "recorder",
-        );
-
-        try {
-          await this.firstCDP.send("Fetch.continueResponse", { requestId });
-        } catch (e) {
-          logger.debug(
-            "continueResponse failed",
-            { url, ...formatErr(e), from: "serviceWorker" },
-            "recorder",
-          );
-        }
-
-        return;
-      }
-
-      await foundRecorder.handleRequestPaused(params, this.firstCDP, true);
-    });
-
-    await this.firstCDP.send("Fetch.enable", {
-      patterns: [{ urlPattern: "*", requestStage: "Response" }],
-    });
-  }
 
   interceptRequest(page: Page, callback: (event: HTTPRequest) => void) {
     page.on("request", callback);

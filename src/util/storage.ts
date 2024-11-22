@@ -9,13 +9,11 @@ import { createHash } from "crypto";
 
 import * as Minio from "minio";
 
-import { initRedis } from "./redis.js";
 import { logger } from "./logger.js";
 
 // @ts-expect-error (incorrect types on get-folder-size)
 import getFolderSize from "get-folder-size";
 
-import { WACZ } from "./wacz.js";
 import { HTTPResponse } from "puppeteer-core";
 
 const DEFAULT_REGION = "us-east-1";
@@ -85,32 +83,6 @@ export class S3StorageSync {
     this.webhookUrl = webhookUrl;
   }
 
-  async uploadStreamingWACZ(wacz: WACZ, targetFilename: string) {
-    const fileUploadInfo = {
-      bucket: this.bucketName,
-      crawlId: this.crawlId,
-      prefix: this.objectPrefix,
-      targetFilename,
-    };
-    logger.info("S3 file upload information", fileUploadInfo, "storage");
-
-    const waczStream = wacz.generate();
-
-    await this.client.putObject(
-      this.bucketName,
-      this.objectPrefix + targetFilename,
-      waczStream,
-    );
-
-    const hash = wacz.getHash();
-    const path = targetFilename;
-
-    const size = wacz.getSize();
-
-    // for backwards compatibility, keep 'bytes'
-    return { path, size, hash, bytes: size };
-  }
-
   async uploadFile(srcFilename: string, targetFilename: string) {
     const fileUploadInfo = {
       bucket: this.bucketName,
@@ -141,59 +113,6 @@ export class S3StorageSync {
       this.objectPrefix + srcFilename,
       destFilename,
     );
-  }
-
-  async uploadCollWACZ(
-    srcOrWACZ: string | WACZ,
-    targetFilename: string,
-    completed = true,
-  ) {
-    const resource =
-      typeof srcOrWACZ === "string"
-        ? await this.uploadFile(srcOrWACZ, targetFilename)
-        : await this.uploadStreamingWACZ(srcOrWACZ, targetFilename);
-
-    logger.info(
-      "WACZ S3 file upload resource",
-      { targetFilename, resource },
-      "storage",
-    );
-
-    if (this.webhookUrl) {
-      const body = {
-        id: this.crawlId,
-        user: this.userId,
-
-        //filename: `s3://${this.bucketName}/${this.objectPrefix}${this.waczFilename}`,
-        filename: this.fullPrefix + targetFilename,
-
-        ...resource,
-        completed,
-      };
-
-      logger.info(`Pinging Webhook: ${this.webhookUrl}`);
-
-      if (
-        this.webhookUrl.startsWith("http://") ||
-        this.webhookUrl.startsWith("https://")
-      ) {
-        await fetch(this.webhookUrl, {
-          method: "POST",
-          body: JSON.stringify(body),
-        });
-      } else if (this.webhookUrl.startsWith("redis://")) {
-        const parts = this.webhookUrl.split("/");
-        if (parts.length !== 5) {
-          logger.fatal(
-            "redis webhook url must be in format: redis://<host>:<port>/<db>/<key>",
-            {},
-            "redis",
-          );
-        }
-        const redis = await initRedis(parts.slice(0, 4).join("/"));
-        await redis.rpush(parts[4], JSON.stringify(body));
-      }
-    }
   }
 }
 

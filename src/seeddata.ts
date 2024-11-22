@@ -1,4 +1,3 @@
-
 import connectDB from "./db.js";
 import { CrawledContentModel } from "./models/crawledcontent.js";
 import { JobModel } from "./models/job.js";
