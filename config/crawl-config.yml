@@ -1,4 +1,4 @@
-url: https://truyensex.moe/12-nu-than/
+url: https://www.lotuscosmeticsshop.com/
 
 redisStoreUrl: redis://127.0.0.1:6379
 redisStoreClean: true
@@ -27,7 +27,7 @@ scopeType: custom
 # custom: Chỉ dùng cho include
 
 workers: 1
-pageLimit: 2
+pageLimit: 3
 depth: 1 # sâu bao nhiêu 
 #Depth = 0: Chỉ crawl các URL seed (URL gốc) được cung cấp
 #Depth = 1: Crawl URL seed và các link trực tiếp từ trang seed

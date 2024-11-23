@@ -2,11 +2,10 @@
 
 import { logger } from "./util/logger.js";
 import { setExitOnRedisError } from "./util/redis.js";
-import { Crawler } from "./services/crawler/index.js";
+import { Crawler } from "./services/crawler.js";
 import connectDB from "./db.js";
 import { seedDatabase } from "./seeddata.js";
 import dotenv from "dotenv";
-import { CrawlerArgs, parseArgs } from "./util/argParser.js";
 
 let crawler: Crawler | null = null;
 
@@ -16,12 +15,12 @@ dotenv.config();
 
 async function handleTerminate(signame: string) {
   logger.info(`${signame} received...`);
-  if (!crawler || !crawler.stateManager.crawlState) {
+  if (!crawler || !crawler.crawlState) {
     logger.error("error: no crawler running, exiting");
     process.exit(1);
   }
 
-  if (await crawler.stateManager.crawlState.isFinished()) {
+  if (await crawler.crawlState.isFinished()) {
     logger.info("success: crawler done, exiting");
     process.exit(0);
   }
@@ -31,7 +30,7 @@ async function handleTerminate(signame: string) {
   try {
     await crawler.checkCanceled();
 
-    if (!crawler.configManager.config.interrupted) {
+    if (!crawler.interrupted) {
       logger.info("SIGNAL: gracefully finishing current pages...");
       crawler.gracefulFinishOnInterrupt();
     } else if (forceTerm || Date.now() - lastSigInt > 200) {
@@ -59,7 +58,5 @@ await connectDB();
 await seedDatabase();
 // await scheduleJobs();
 
-const params = parseArgs() as CrawlerArgs;
-crawler = new Crawler(params);
-await crawler.init();
-await crawler.crawl();
+crawler = new Crawler();
+await crawler.run();

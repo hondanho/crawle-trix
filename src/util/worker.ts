@@ -5,7 +5,7 @@ import { sleep, timedRun } from "./timing.js";
 import { rxEscape } from "./seeds.js";
 import { CDPSession, Page } from "puppeteer-core";
 import { PageState, WorkerId } from "./state.js";
-import { Crawler } from "../services/crawler/index.js";
+import { Crawler } from "../services/crawler.js";
 
 const MAX_REUSE = 5;
 
@@ -210,8 +210,8 @@ export class PageWorker {
         await sleep(0.5);
         logger.warn("Retrying getting new page", this.logDetails, "worker");
 
-        if (this.crawler.configManager.config.healthChecker) {
-          this.crawler.configManager.config.healthChecker.incError();
+        if (this.crawler.healthChecker) {
+          this.crawler.healthChecker.incError();
         }
       }
     }
@@ -286,12 +286,12 @@ export class PageWorker {
   }
 
   async runLoop() {
-    const crawlState = this.crawler.stateManager.crawlState;
+    const crawlState = this.crawler.crawlState;
 
     let loggedWaiting = false;
 
     while (await this.crawler.isCrawlRunning()) {
-      await crawlState.processMessage(this.crawler.configManager.config.seeds);
+      await crawlState.processMessage(this.crawler.seeds);
 
       const data = await crawlState.nextFromQueue();
 

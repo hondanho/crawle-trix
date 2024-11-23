@@ -1,0 +1,13 @@
+{
+  "crawled": 0,
+  "total": 1,
+  "pending": 1,
+  "failed": 0,
+  "limit": {
+    "max": 3,
+    "hit": false
+  },
+  "pendingPages": [
+    "{\"seedId\":0,\"started\":\"2024-11-23T08:09:40.362Z\",\"extraHops\":0,\"url\":\"https:\\/\\/www.lotuscosmeticsshop.com\\/\",\"added\":\"2024-11-23T08:09:40.068Z\",\"depth\":0}"
+  ]
+}
