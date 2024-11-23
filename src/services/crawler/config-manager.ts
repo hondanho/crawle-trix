@@ -14,7 +14,7 @@ import { HTTPResponse, Page } from "puppeteer-core";
 import { HealthChecker } from "../../util/healthcheck.js";
 import { OriginOverride } from "../../util/originoverride.js";
 import { Browser } from "../../util/browser.js";
-import { Crawler } from "./index.js";
+import { Crawler } from "./crawler.js";
 import { PAGE_OP_TIMEOUT_SECS } from "../../util/constants.js";
 import { collectCustomBehaviors } from "../../util/file_reader.js";
 

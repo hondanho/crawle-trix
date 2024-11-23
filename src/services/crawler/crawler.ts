@@ -25,7 +25,7 @@ import { collectCustomBehaviors } from "../../util/file_reader.js";
 
 const behaviors = fs.readFileSync(
   new URL(
-    "../../node_modules/browsertrix-behaviors/dist/behaviors.js",
+    "../../../node_modules/browsertrix-behaviors/dist/behaviors.js",
     import.meta.url
   ),
   { encoding: "utf8" }
@@ -54,7 +54,7 @@ export class Crawler extends BaseCrawler {
     await this.configManager.initDirectories();
     await this.configManager.initLogging();
     await this.stateManager.initCrawlState(
-      this.params,
+      this.config,
       this.config.seeds,
       this.crawlId
     );
@@ -64,7 +64,7 @@ export class Crawler extends BaseCrawler {
   async crawl(): Promise<void> {
     try {
       await this._addInitialSeeds();
-      await runWorkers(this, this.params.workers, this.config.maxPageTime);
+      await runWorkers(this, this.config.params.workers, this.config.maxPageTime);
       await this.postCrawl();
     } catch (e) {
       logger.error("Crawl failed", e);
@@ -639,15 +639,6 @@ self.__bx_behaviors.selectMainBehavior();
     // Setup page
     await this.pageManager.setupPage(page);
 
-    // Extract URLs
-    await this.urlExtractor.extractLinks(
-      page,
-      data,
-      this.params.selectLinks,
-      data,
-      this.config
-    );
-
     // Crawl data
     const crawledData = await this.dataCrawler.crawlPage(
       page,
@@ -657,6 +648,15 @@ self.__bx_behaviors.selectMainBehavior();
 
     // Update state
     await this.updatePageState(data, crawledData);
+    
+    // Extract URLs
+    await this.urlExtractor.extractLinks(
+      page,
+      data,
+      this.params.selectLinks,
+      data,
+      this.config
+    );
   }
 
   private async updatePageState(

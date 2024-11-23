@@ -7,6 +7,7 @@ import { logger } from "../../util/logger.js";
 import { ScopedSeed } from "../../util/seeds.js";
 import { initRedis } from "../../util/redis.js";
 import os from "os";
+import { CrawlerConfig } from "./config-manager.js";
 
 // Quản lý state của crawler
 export class StateManager implements IStateManager {
@@ -23,11 +24,11 @@ export class StateManager implements IStateManager {
   }
 
   async initCrawlState(
-    params: CrawlerArgs,
+    config: CrawlerConfig,
     seeds: ScopedSeed[],
     crawlId: string
   ) {
-    const redisUrl = this.getRedisUrl(params);
+    const redisUrl = this.getRedisUrl(config);
     if (!redisUrl.startsWith("redis://")) {
       logger.fatal(
         "stateStoreUrl must start with redis:// -- Only redis-based store currently supported"
@@ -53,16 +54,16 @@ export class StateManager implements IStateManager {
       "state"
     );
 
-    logger.debug(`Max Page Time: ${params.maxPageTime} seconds`, {}, "state");
+    logger.debug(`Max Page Time: ${config.maxPageTime} seconds`, {}, "state");
 
     this.crawlState = new RedisCrawlState(
       redis,
       crawlId,
-      params.maxPageTime as number,
+      config.maxPageTime,
       os.hostname()
     );
 
-    if (params.redisStoreClean) {
+    if (config.params.redisStoreClean) {
       // Thêm logic xóa Redis
       try {
         if (this.crawlState) {
@@ -77,8 +78,8 @@ export class StateManager implements IStateManager {
     }
 
     // load full state from config
-    if (params.state) {
-      await this.crawlState.load(params.state, seeds, true);
+    if (config.params.state) {
+      await this.crawlState.load(config.params.state, seeds, true);
       // otherwise, just load extra seeds
     } else {
       await this.loadExtraSeeds(seeds);
@@ -87,15 +88,15 @@ export class StateManager implements IStateManager {
     // clear any pending URLs from this instance
     await this.crawlState.clearOwnPendingLocks();
 
-    if (params.saveState === "always" && params.saveStateInterval) {
+    if (config.params.saveState === "always" && config.params.saveStateInterval) {
       logger.debug(
-        `Saving crawl state every ${params.saveStateInterval} seconds, keeping last ${params.saveStateHistory} states`,
+        `Saving crawl state every ${config.params.saveStateInterval} seconds, keeping last ${config.params.saveStateHistory} states`,
         {},
         "state"
       );
     }
 
-    if (params.logErrorsToRedis) {
+    if (config.params.logErrorsToRedis) {
       logger.setLogErrorsToRedis(true);
       logger.setCrawlState(this.crawlState);
     }
@@ -112,17 +113,17 @@ export class StateManager implements IStateManager {
     }
   }
 
-  private getRedisUrl(params: CrawlerArgs): string {
+  private getRedisUrl(config: CrawlerConfig): string {
     if (process.platform !== "linux") {
       return (
         process.env.REDIS_URL ||
-        params.redisStoreUrl ||
+        config.params.redisStoreUrl ||
         "redis://localhost:6379/0"
       );
     }
     return (
       process.env.REDIS_URL_DOCKER ||
-      params.redisStoreUrl ||
+      config.params.redisStoreUrl ||
       "redis://localhost:6379/0"
     );
   }

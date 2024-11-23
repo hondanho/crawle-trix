@@ -2,7 +2,7 @@
 
 import { logger } from "./util/logger.js";
 import { setExitOnRedisError } from "./util/redis.js";
-import { Crawler } from "./services/crawler/index.js";
+import { Crawler } from "./services/crawler/crawler.js";
 import connectDB from "./db.js";
 import { seedDatabase } from "./seeddata.js";
 import dotenv from "dotenv";

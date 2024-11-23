@@ -5,7 +5,7 @@ import { sleep, timedRun } from "./timing.js";
 import { rxEscape } from "./seeds.js";
 import { CDPSession, Page } from "puppeteer-core";
 import { PageState, WorkerId } from "./state.js";
-import { Crawler } from "../services/crawler/index.js";
+import { Crawler } from "../services/crawler/crawler.js";
 
 const MAX_REUSE = 5;
 
