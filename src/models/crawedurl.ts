@@ -11,7 +11,7 @@ const CrawledUrlSchema = new Schema(
     },
     crawledAt: { type: Date },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 export const CrawledUrlModel = model("CrawledUrl", CrawledUrlSchema);

@@ -69,7 +69,7 @@ export class Browser {
     headless = false,
     emulateDevice = {},
     swOpt = "disabled",
-    ondisconnect = null
+    ondisconnect = null,
   }: LaunchOpts) {
     if (this.isLaunched()) {
       return;
@@ -84,7 +84,6 @@ export class Browser {
     this.emulateDevice = emulateDevice;
 
     const args = this.chromeArgs(chromeOptions);
-
 
     if (!headless) {
       args.push(`--display=${DISPLAY}`);
@@ -483,7 +482,6 @@ export class Browser {
 
     return { page, cdp };
   }
-
 
   interceptRequest(page: Page, callback: (event: HTTPRequest) => void) {
     page.on("request", callback);

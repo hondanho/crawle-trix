@@ -25,11 +25,7 @@ import {
 } from "../util/storage.js";
 import { initRedis } from "../util/redis.js";
 import { logger, formatErr, LogDetails } from "../util/logger.js";
-import {
-  WorkerOpts,
-  WorkerState,
-  runWorkers,
-} from "../util/worker.js";
+import { WorkerOpts, WorkerState, runWorkers } from "../util/worker.js";
 import { sleep, timedRun, secondsElapsed } from "../util/timing.js";
 import { collectCustomBehaviors, getInfoString } from "../util/file_reader.js";
 
