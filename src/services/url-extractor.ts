@@ -6,19 +6,118 @@ import {
   ExtractSelector,
   PAGE_OP_TIMEOUT_SECS,
 } from "../util/constants.js";
-import { PageState } from "../util/state.js";
+import { LoadState, PageState } from "../util/state.js";
 import { QueueState } from "../util/state.js";
 import { ConfigManager } from "./config-manager.js";
 import { StateManager } from "./state-manager.js";
 import { timedRun } from "../util/timing.js";
-
+import { PageManager } from "./page-manager.js";
+import { isHTMLMime } from "../util/reqresp.js";
 export class URLExtractor {
   private configManager: ConfigManager;
   private stateManager: StateManager;
+  private pageManager: PageManager;
 
-  constructor(configEnv: ConfigManager, stateManager: StateManager) {
+  constructor(
+    configEnv: ConfigManager,
+    stateManager: StateManager,
+    pageManager: PageManager,
+  ) {
     this.configManager = configEnv;
     this.stateManager = stateManager;
+    this.pageManager = pageManager;
+  }
+
+  async preExtractLinks(crawledData: any, data: PageState, page: Page) {
+    const { url, seedId, extraHops } = data;
+    // Update state
+    if (!crawledData.response) {
+      throw new Error("no response for page load, assuming failed");
+    }
+
+    data.title = crawledData.title;
+    const resp = crawledData.response;
+    const respUrl = resp.url();
+
+    if (this.configManager.config.params.depth === 0 && respUrl !== url) {
+      data.seedId = await this.stateManager.crawlState.addExtraSeed(
+        this.configManager.config.seeds,
+        this.configManager.config.seeds.length,
+        data.seedId,
+        respUrl,
+      );
+      logger.info("Seed page redirected, adding redirected seed", {
+        origUrl: url,
+        newUrl: respUrl,
+        seedId: data.seedId,
+      });
+    }
+    data.status = resp?.status() || 200;
+    const isChromeError = page.url().startsWith("chrome-error://");
+    let failed = isChromeError;
+    if (
+      this.configManager.config.params.failOnInvalidStatus &&
+      data.status >= 400
+    ) {
+      // Handle 4xx or 5xx response as a page load error
+      failed = true;
+    }
+
+    if (failed) {
+      logger.error(
+        isChromeError ? "Page Crashed on Load" : "Page Invalid Status",
+        {
+          status,
+        },
+      );
+      throw new Error("logged");
+    }
+    const contentType = resp.headers()["content-type"];
+
+    if (contentType) {
+      data.mime = contentType.split(";")[0];
+      if (data.mime) {
+        data.isHTMLPage = isHTMLMime(data.mime);
+      }
+    } else {
+      // guess that its html if it fully loaded as a page
+      data.isHTMLPage = !!crawledData.response;
+    }
+    if (crawledData.response) {
+      data.loadState = LoadState.FULL_PAGE_LOADED;
+    }
+    if (!data.isHTMLPage) {
+      data.filteredFrames = [];
+      return;
+    }
+
+    await this.stateManager.updateState("running");
+
+    // HTML Pages Only here
+    data.filteredFrames = page
+      .frames()
+      .filter((frame) => this.pageManager.shouldIncludeFrame(frame));
+
+    const seed = await this.stateManager.crawlState.getSeedAt(
+      this.configManager.config.seeds,
+      this.configManager.config.numOriginalSeeds,
+      seedId,
+    );
+
+    if (!seed) {
+      logger.error(
+        "Seed not found, likely invalid crawl state - skipping link extraction and behaviors",
+        { seedId },
+      );
+      return;
+    }
+
+    // skip extraction if at max depth
+    if (seed.isAtMaxDepth(this.configManager.config.params.depth, extraHops)) {
+      logger.debug("Skipping Link Extraction, At Max Depth", {}, "links");
+      return;
+    }
+    await this.pageManager.awaitPageLoad(page.mainFrame());
   }
 
   async extractLinks(
