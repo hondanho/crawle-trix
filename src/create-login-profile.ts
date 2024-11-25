@@ -266,7 +266,6 @@ async function main() {
 
 async function automatedProfile(
   // TODO: Fix this the next time the file is edited.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   params: any,
   browser: Browser,
   page: Page,
@@ -322,7 +321,6 @@ async function automatedProfile(
 
 async function createProfile(
   // TODO: Fix this the next time the file is edited.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   params: any,
   browser: Browser,
   page: Page,
@@ -364,7 +362,6 @@ async function createProfile(
 }
 
 function promptInput(msg: string, hidden = false) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const rl: any = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
@@ -395,7 +392,6 @@ function promptInput(msg: string, hidden = false) {
 }
 
 class InteractiveBrowser {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   params: any;
   browser: Browser;
   page: Page;
@@ -408,7 +404,6 @@ class InteractiveBrowser {
   shutdownTimer: NodeJS.Timer | null;
 
   constructor(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     params: any,
     browser: Browser,
     page: Page,
@@ -514,7 +509,6 @@ class InteractiveBrowser {
 
       const cookies = await this.browser.getCookies(this.page);
       for (const cookieOrig of cookies) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const cookie = cookieOrig as any;
         cookie.expires =
           new Date().getTime() / 1000 + this.params.cookieDays * 86400;
@@ -533,7 +527,6 @@ class InteractiveBrowser {
         }
       }
       await this.browser.setCookies(this.page, cookies);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (e: any) {
       logger.error("Save Cookie Error: ", e);
     }
@@ -577,7 +570,6 @@ class InteractiveBrowser {
 
       case "/ping":
         if (this.shutdownWait) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           clearTimeout(this.shutdownTimer as any);
           this.shutdownTimer = setTimeout(
             () => process.exit(0),
@@ -622,8 +614,6 @@ class InteractiveBrowser {
           this.page
             .goto(url)
             .catch((e) => logger.warn("Page Load Failed/Interrupted", e));
-
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (e: any) {
           res.writeHead(400, { "Content-Type": "application/json" });
           res.end(JSON.stringify({ error: e.toString() }));
@@ -653,7 +643,6 @@ class InteractiveBrowser {
 
           res.writeHead(200, { "Content-Type": "application/json" });
           res.end(JSON.stringify({ resource, origins }));
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (e: any) {
           res.writeHead(500, { "Content-Type": "application/json" });
           res.end(JSON.stringify({ error: e.toString() }));
@@ -677,7 +666,6 @@ class InteractiveBrowser {
           res.end(
             "<html><body>Profile Created! You may now close this window.</body></html>",
           );
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (e: any) {
           res.writeHead(500, { "Content-Type": "text/html" });
           res.end(

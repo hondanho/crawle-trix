@@ -107,7 +107,6 @@ export class BlockRules {
     browser.interceptRequest(page, onRequest);
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async handleRequest(request: HTTPRequest, logDetails: Record<string, any>) {
     const url = request.url();
 
@@ -134,7 +133,7 @@ export class BlockRules {
     request: HTTPRequest,
     url: string,
     // TODO: Fix this the next time the file is edited.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     logDetails: Record<string, any>,
   ) {
     if (!url.startsWith("http:") && !url.startsWith("https:")) {
@@ -219,7 +218,7 @@ export class BlockRules {
     frameUrl: string,
     isNavReq: boolean,
     // TODO: Fix this the next time the file is edited.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     logDetails: Record<string, any>,
   ) {
     const { url, inFrameUrl, frameTextMatch } = rule;
@@ -267,7 +266,7 @@ export class BlockRules {
     reqUrl: string,
     frameTextMatch: RegExp,
     // TODO: Fix this the next time the file is edited.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     logDetails: Record<string, any>,
   ) {
     try {
@@ -333,7 +332,7 @@ export class AdBlockRules extends BlockRules {
     request: HTTPRequest,
     url: string,
     // TODO: Fix this the next time the file is edited.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     logDetails: Record<string, any>,
   ) {
     if (this.isAdUrl(url)) {

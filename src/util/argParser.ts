@@ -40,7 +40,6 @@ export type CrawlerArgs = ReturnType<typeof parseArgs> & {
 
   crawlId: string;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   origConfig: Record<string, any>;
   state?: SaveState;
 
@@ -676,7 +675,7 @@ class ArgParser {
           if (configPath === "/crawls/stdin") {
             configPath = process.stdin.fd;
           }
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
           origConfig = yaml.load(fs.readFileSync(configPath, "utf8")) as any;
           return origConfig;
         },
@@ -696,7 +695,6 @@ class ArgParser {
     return res ? res.map((e) => e.replace(/"(.+)"/, "$1")) : [];
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   validateArgs(argv: any, isQA: boolean) {
     argv.crawlId = argv.crawlId || process.env.CRAWL_ID || os.hostname();
     argv.collection = interpolateFilename(argv.collection, argv.crawlId);
@@ -726,7 +724,6 @@ class ArgParser {
     argv.text = argv.text || [];
 
     if (argv.mobileDevice) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       argv.emulateDevice = (devices as Record<string, any>)[
         argv.mobileDevice.replace("-", " ")
       ];
@@ -747,7 +744,6 @@ class ArgParser {
 
       for (const seed of urlSeedFileList) {
         if (seed) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (argv.seeds as any).push(seed);
         }
       }
@@ -803,7 +799,6 @@ class ArgParser {
 
         try {
           scopedSeeds.push(new ScopedSeed({ ...scopeOpts, ...newSeed }));
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (e: any) {
           logger.error("Failed to create seed", {
             error: e.toString(),

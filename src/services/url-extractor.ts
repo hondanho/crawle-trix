@@ -1,22 +1,31 @@
 import { Page } from "puppeteer-core";
-import { formatErr, LogDetails, logger } from "../../util/logger.js";
+
+import { formatErr, LogDetails, logger } from "../util/logger.js";
 import {
   ADD_LINK_FUNC,
   ExtractSelector,
   PAGE_OP_TIMEOUT_SECS,
-} from "../../util/constants.js";
-import { PageState } from "../../util/state.js";
-import { QueueState } from "../../util/state.js";
-import { CrawlerConfig } from "./config-manager.js";
-import { timedRun } from "../../util/timing.js";
+} from "../util/constants.js";
+import { PageState } from "../util/state.js";
+import { QueueState } from "../util/state.js";
+import { ConfigManager } from "./config-manager.js";
+import { StateManager } from "./state-manager.js";
+import { timedRun } from "../util/timing.js";
 
 export class URLExtractor {
+  private configManager: ConfigManager;
+  private stateManager: StateManager;
+
+  constructor(configEnv: ConfigManager, stateManager: StateManager) {
+    this.configManager = configEnv;
+    this.stateManager = stateManager;
+  }
+
   async extractLinks(
     page: Page,
     data: PageState,
     selectors: ExtractSelector[],
     logDetails: LogDetails,
-    config: CrawlerConfig
   ) {
     const { seedId, depth, extraHops = 0, filteredFrames, callbacks } = data;
 
@@ -28,7 +37,6 @@ export class URLExtractor {
         extraHops,
         false,
         logDetails,
-        config
       );
     };
 
@@ -41,20 +49,18 @@ export class URLExtractor {
       const { selector, extract, isAttribute, addLinkFunc } = options;
       const urls = new Set<string>();
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const getAttr = (elem: any) => urls.add(elem.getAttribute(extract));
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       const getProp = (elem: any) => urls.add(elem[extract]);
 
       const getter = isAttribute ? getAttr : getProp;
 
       document.querySelectorAll(selector).forEach(getter);
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const func = (window as any)[addLinkFunc] as (
-        url: string
-      ) => NonNullable<unknown>;
-      urls.forEach((url) => func.call(this, url));
+      const addLinkFunction = (window as any)[addLinkFunc];
+      urls.forEach((url) => {
+        addLinkFunction(url);
+      });
 
       return true;
     };
@@ -77,16 +83,16 @@ export class URLExtractor {
                   frameUrl: frame.url,
                   ...logDetails,
                   ...formatErr(e),
-                })
+                }),
               );
 
             return timedRun(
               getLinks,
               PAGE_OP_TIMEOUT_SECS,
               "Link extraction timed out",
-              logDetails
+              logDetails,
             );
-          })
+          }),
         );
       }
     } catch (e) {
@@ -101,7 +107,6 @@ export class URLExtractor {
     extraHops = 0,
     noOOS = false,
     logDetails: LogDetails = {},
-    config: CrawlerConfig
   ) {
     try {
       depth += 1;
@@ -117,9 +122,8 @@ export class URLExtractor {
             depth,
             seedId,
             noOOS,
-            config,
           },
-          logDetails
+          logDetails,
         );
 
         if (!res) {
@@ -134,22 +138,13 @@ export class URLExtractor {
             url,
             depth,
             isOOS ? newExtraHops : extraHops,
-            config,
-            logDetails
+            logDetails,
           );
         }
       }
     } catch (e) {
       logger.error("Queuing Error", e, "links");
     }
-  }
-
-  async setupPage(page: Page) {
-    // Expose function để thêm URL vào queue
-    await page.exposeFunction(ADD_LINK_FUNC, async (url: string) => {
-      // Trả về URL đã extract được
-      return url;
-    });
   }
 
   protected getScope(
@@ -159,23 +154,21 @@ export class URLExtractor {
       depth,
       extraHops,
       noOOS,
-      config,
     }: {
       seedId: number;
       url: string;
       depth: number;
       extraHops: number;
       noOOS: boolean;
-      config: CrawlerConfig;
     },
-    logDetails = {}
+    logDetails = {},
   ) {
-    return config.seeds[seedId].isIncluded(
+    return this.configManager.config.seeds[seedId].isIncluded(
       url,
       depth,
       extraHops,
       logDetails,
-      noOOS
+      noOOS,
     );
   }
 
@@ -184,18 +177,17 @@ export class URLExtractor {
     url: string,
     depth: number,
     extraHops: number,
-    config: CrawlerConfig,
     logDetails: LogDetails = {},
     ts = 0,
-    pageid?: string
+    pageid?: string,
   ) {
-    if (config.limitHit) {
+    if (this.configManager.config.limitHit) {
       return false;
     }
 
-    const result = await config.crawlState?.addToQueue(
+    const result = await this.stateManager.crawlState?.addToQueue(
       { url, seedId, depth, extraHops, ts, pageid },
-      config.pageLimit
+      this.configManager.config.pageLimit,
     );
 
     switch (result) {
@@ -207,16 +199,16 @@ export class URLExtractor {
         logger.debug(
           "Not queued page url, at page limit",
           { url, ...logDetails },
-          "links"
+          "links",
         );
-        config.limitHit = true;
+        this.configManager.config.limitHit = true;
         return false;
 
       case QueueState.DUPE_URL:
         logger.debug(
           "Not queued page url, already seen",
           { url, ...logDetails },
-          "links"
+          "links",
         );
         return false;
     }

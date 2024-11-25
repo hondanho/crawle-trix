@@ -132,7 +132,6 @@ export class ReplayServer {
     const array = range.match(/bytes=(\d+)-(\d*)/);
     let contentRange = undefined;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const opts: Record<string, any> = {};
     if (array) {
       opts.start = parseInt(array[1]);

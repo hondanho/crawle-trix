@@ -9,11 +9,10 @@ Object.defineProperty(RegExp.prototype, "toJSON", {
   value: RegExp.prototype.toString,
 });
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type LogDetails = Record<string, any>;
 
 // ===========================================================================
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 export function formatErr(e: unknown): Record<string, any> {
   if (e instanceof Error) {
     return { type: "exception", message: e.message, stack: e.stack || "" };
@@ -113,7 +112,6 @@ class Logger {
     context: LogContext,
     logLevel = "info",
   ) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const data: Record<string, any> = formatErr(dataUnknown);
 
     if (this.logLevels.length) {
@@ -164,7 +162,6 @@ class Logger {
     logLevel = "info",
     color = "green",
   ) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const data: Record<string, any> = formatErr(dataUnknown);
 
     if (this.logLevels.length) {

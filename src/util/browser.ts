@@ -32,7 +32,7 @@ type LaunchOpts = {
   signals: boolean;
   headless: boolean;
   // TODO: Fix this the next time the file is edited.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   emulateDevice?: Record<string, any>;
   ondisconnect?: ((err: unknown) => NonNullable<unknown>) | null;
 
@@ -50,7 +50,7 @@ export class Browser {
   profileDir: string;
   customProfile = false;
   // TODO: Fix this the next time the file is edited.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   emulateDevice: Record<string, any> | null = null;
 
   browser?: PptrBrowser | null = null;
@@ -69,7 +69,7 @@ export class Browser {
     headless = false,
     emulateDevice = {},
     swOpt = "disabled",
-    ondisconnect = null
+    ondisconnect = null,
   }: LaunchOpts) {
     if (this.isLaunched()) {
       return;
@@ -84,7 +84,6 @@ export class Browser {
     this.emulateDevice = emulateDevice;
 
     const args = this.chromeArgs(chromeOptions);
-
 
     if (!headless) {
       args.push(`--display=${DISPLAY}`);
@@ -171,7 +170,7 @@ export class Browser {
       const resp = await fetch(profileFilename);
       await pipeline(
         // TODO: Fix this the next time the file is edited.
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         Readable.fromWeb(resp.body as any),
         fs.createWriteStream(targetFilename),
       );
@@ -288,7 +287,7 @@ export class Browser {
   ) {
     const frameUrl = frame.url();
     // TODO: Fix this the next time the file is edited.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     let details: Record<string, any> = { frameUrl, ...logData };
 
     if (!frameUrl || frame.detached) {
@@ -300,7 +299,6 @@ export class Browser {
       return false;
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const frameId = (frame as any)._id;
 
     const contextId = frameIdToExecId.get(frameId);
@@ -385,7 +383,8 @@ export class Browser {
     ondisconnect: Function | null = null,
   ) {
     const executablePaths = {
-      win32: "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+      win32:
+        "C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe",
       darwin: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
       linux: "/usr/bin/google-chrome",
     };
@@ -472,7 +471,7 @@ export class Browser {
     if (device && page) {
       if (device.viewport && device.userAgent) {
         // TODO: Fix this the next time the file is edited.
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         await page.emulate(device as any);
       } else if (device.userAgent) {
         await page.setUserAgent(device.userAgent);
@@ -483,7 +482,6 @@ export class Browser {
 
     return { page, cdp };
   }
-
 
   interceptRequest(page: Page, callback: (event: HTTPRequest) => void) {
     page.on("request", callback);
@@ -502,7 +500,7 @@ export class Browser {
   }
 
   // TODO: Fix this the next time the file is edited.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   async setCookies(page: Page, cookies: any) {
     return await page.setCookie(...cookies);
   }

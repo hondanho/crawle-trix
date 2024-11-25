@@ -1,4 +1,5 @@
 import { HTTPResponse, Page } from "puppeteer-core";
+import { Resource } from "./storage";
 
 // Thêm method mới để xử lý CSS
 async function extractCSSLinks(
@@ -91,7 +92,7 @@ function getCSSResourceType(url: string): string {
 }
 
 export async function collectLinkAssets(
-  resources: { url: string; type: string; response?: HTTPResponse }[],
+  resources: Resource[],
   page: Page,
   originDomain: string,
 ) {

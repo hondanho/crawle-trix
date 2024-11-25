@@ -5,7 +5,7 @@ import { sleep, timedRun } from "./timing.js";
 import { rxEscape } from "./seeds.js";
 import { CDPSession, Page } from "puppeteer-core";
 import { PageState, WorkerId } from "./state.js";
-import { Crawler } from "../services/crawler/crawler.js";
+import { Crawler } from "../services/crawler.js";
 
 const MAX_REUSE = 5;
 
@@ -47,7 +47,7 @@ export class PageWorker {
   opts?: WorkerOpts;
 
   // TODO: Fix this the next time the file is edited.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   logDetails: Record<string, any> = {};
 
   crashed = false;
@@ -125,7 +125,7 @@ export class PageWorker {
 
     let retry = 0;
 
-    while (await this.crawler.isCrawlRunning()) {
+    while (await this.crawler.stateManager.isCrawlRunning()) {
       try {
         logger.debug("Getting page in new window", { workerid }, "worker");
         const result = await timedRun(
@@ -168,7 +168,7 @@ export class PageWorker {
 
         // more serious page crash, mark as failed
         // TODO: Fix this the next time the file is edited.
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         page.on("error", (err: any) => {
           // ensure we're still on this page, otherwise ignore!
           if (this.page === page) {
@@ -184,7 +184,7 @@ export class PageWorker {
           }
         });
 
-        await this.crawler.setupPage(this.opts);
+        await this.crawler.pageManager.setupPage(this.opts);
 
         return this.opts;
       } catch (err) {
@@ -257,7 +257,7 @@ export class PageWorker {
       await this.closePage();
     } finally {
       await timedRun(
-        this.crawler.pageFinished(data),
+        this.crawler.stateManager.pageFinished(data),
         FINISHED_TIMEOUT,
         "Page Finished Timed Out",
         this.logDetails,
@@ -290,15 +290,19 @@ export class PageWorker {
 
     let loggedWaiting = false;
 
-    while (await this.crawler.isCrawlRunning()) {
+    while (await this.crawler.stateManager.isCrawlRunning()) {
       await crawlState.processMessage(this.crawler.configManager.config.seeds);
 
-      const data = await crawlState.nextFromQueue();
+      const data = await crawlState.nextFromQueue(
+        this.crawler.configManager.config,
+      );
 
       // see if any work data in the queue
       if (data) {
         // filter out any out-of-scope pages right away
-        if (!(await this.crawler.isInScope(data, this.logDetails))) {
+        if (
+          !(await this.crawler.stateManager.isInScope(data, this.logDetails))
+        ) {
           logger.info("Page no longer in scope", data);
           await crawlState.markExcluded(data.url);
           continue;
@@ -345,12 +349,9 @@ export class PageWorker {
 const workers: PageWorker[] = [];
 
 // ===========================================================================
-export async function runWorkers(
-  crawler: Crawler,
-  numWorkers: number,
-  maxPageTime: number,
-  alwaysReuse = false,
-) {
+export async function runWorkers(crawler: Crawler, alwaysReuse = false) {
+  const numWorkers = crawler.configManager.config.params.workers;
+  const maxPageTime = crawler.configManager.config.maxPageTime;
   logger.info(`Creating ${numWorkers} workers`, {}, "worker");
 
   let offset = 0;

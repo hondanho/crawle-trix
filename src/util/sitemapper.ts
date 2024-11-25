@@ -239,7 +239,7 @@ export class SitemapReader extends EventEmitter {
       resp.headers.get("content-encoding") !== "gzip"
     ) {
       const ds = new DecompressionStream("gzip");
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       stream = body.pipeThrough(ds as any);
     } else {
       stream = body;
@@ -404,7 +404,6 @@ export class SitemapReader extends EventEmitter {
         "sitemap",
       );
       if (errCount++ < 3) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (parserStream._parser as any).error = null;
         parserStream._parser.resume();
       }

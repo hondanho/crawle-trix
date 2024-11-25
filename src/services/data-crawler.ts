@@ -1,24 +1,33 @@
 import { HTTPResponse, Page } from "puppeteer-core";
-import { logger } from "../../util/logger.js";
-import {
-  downloadAllResources,
-  downloadResourceFromUrl,
-} from "../../util/storage.js";
-import { collectLinkAssets } from "../../util/dom.js";
-import { CrawlerConfig } from "./config-manager.js";
+
+import { logger } from "../util/logger.js";
+import { downloadAllResources, downloadResource } from "../util/storage.js";
+import { ConfigManager } from "./config-manager.js";
 
 export class DataCrawler {
+  private configManager: ConfigManager;
+
+  constructor(configEnv: ConfigManager) {
+    this.configManager = configEnv;
+  }
+
   private resources: { url: string; type: string; response?: HTTPResponse }[] =
     [];
 
-  async crawlPage(page: Page, url: string, options: CrawlerConfig) {
-    const { archivesDir, params } = options;
+  async crawlPage(page: Page, url: string) {
+    const { archivesDir, params, gotoOpts } = this.configManager.config;
     const saveAllResources = params.saveAllResources;
     const originUrl = new URL(url);
     const originDomain = originUrl.origin;
 
     // Setup request interception
     await page.setRequestInterception(true);
+
+    if (!params.setJavaScriptEnabled) {
+      await page.setJavaScriptEnabled(false);
+    } else {
+      await page.setJavaScriptEnabled(true);
+    }
 
     page.on("request", async (request) => {
       const requestUrl = request.url();
@@ -74,29 +83,24 @@ export class DataCrawler {
 
     try {
       // Load page
-      await page.goto(url, {
-        waitUntil: "networkidle0",
-        timeout: 30000,
-      });
+      const reponsePage = await page.goto(url, gotoOpts);
 
-      // Collect assets
-      this.resources = await collectLinkAssets(
-        this.resources,
-        page,
-        originDomain
-      );
+      if (!reponsePage) {
+        throw new Error("Failed to load page");
+      } else {
+        await downloadResource(await reponsePage.buffer(), url, archivesDir);
+      }
 
       // Download resources
       if (saveAllResources) {
-        await downloadAllResources(this.resources, { page: url }, archivesDir);
-      } else {
-        await downloadResourceFromUrl(url, archivesDir);
+        // eslint-disable-next-line @typescript-eslint/no-floating-promises
+        downloadAllResources(page, this.resources, originDomain, archivesDir);
       }
 
       return {
         title: await page.title(),
         content: await page.content(),
-        resources: this.resources,
+        response: reponsePage,
       };
     } catch (e) {
       logger.error("Failed to crawl page", e);

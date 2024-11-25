@@ -1,22 +1,26 @@
-import { CrawlerArgs } from "../../util/argParser.js";
+import { CrawlerArgs } from "../util/argParser.js";
 import path from "path";
 import os from "os";
 import fsp from "fs/promises";
-import { logger } from "../../util/logger.js";
-import { IConfigManager } from "./interfaces.js";
-import { PageState } from "../../util/state.js";
-import { ScopedSeed } from "../../util/seeds.js";
-import { AdBlockRules } from "../../util/blockrules.js";
-import { BlockRules } from "../../util/blockrules.js";
-import { RedisCrawlState } from "../../util/state.js";
-import { WriteStream } from "fs";
+import fs, { WriteStream } from "fs";
 import { HTTPResponse, Page } from "puppeteer-core";
-import { HealthChecker } from "../../util/healthcheck.js";
-import { OriginOverride } from "../../util/originoverride.js";
-import { Browser } from "../../util/browser.js";
+import child_process from "child_process";
+
+import { logger } from "../util/logger.js";
+import { PageState } from "../util/state.js";
+import { ScopedSeed } from "../util/seeds.js";
+import { AdBlockRules } from "../util/blockrules.js";
+import { BlockRules } from "../util/blockrules.js";
+import { HealthChecker } from "../util/healthcheck.js";
+import { OriginOverride } from "../util/originoverride.js";
+import { Browser } from "../util/browser.js";
 import { Crawler } from "./crawler.js";
-import { PAGE_OP_TIMEOUT_SECS } from "../../util/constants.js";
-import { collectCustomBehaviors } from "../../util/file_reader.js";
+import { DISPLAY, PAGE_OP_TIMEOUT_SECS } from "../util/constants.js";
+import { collectCustomBehaviors, getInfoString } from "../util/file_reader.js";
+import { ChildProcess } from "child_process";
+import { initProxy } from "../util/proxy.js";
+
+const RUN_DETACHED = process.env.DETACHED_CHILD_PROC == "1";
 
 export interface CrawlerConfig {
   params: CrawlerArgs;
@@ -26,8 +30,6 @@ export interface CrawlerConfig {
   logFilename: string;
 
   headers: Record<string, string>;
-
-  crawlState: RedisCrawlState | null;
 
   logFH: WriteStream | null;
 
@@ -48,14 +50,12 @@ export interface CrawlerConfig {
   seeds: ScopedSeed[];
   numOriginalSeeds: number;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   emulateDevice: Record<string, any>;
 
   captureBasePrefix: string;
 
   infoString: string;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   gotoOpts: Record<string, any>;
 
   archivesDir: string;
@@ -94,20 +94,20 @@ export interface CrawlerConfig {
 }
 
 // Quản lý configuration và khởi tạo
-export class ConfigManager implements IConfigManager {
+export class ConfigManager {
   public config: CrawlerConfig;
 
-  constructor(params: CrawlerArgs) {
-    this.config = this.initializeConfig(params);
+  constructor() {
+    this.config = null as unknown as CrawlerConfig;
   }
 
-  private initializeConfig(params: CrawlerArgs): CrawlerConfig {
+  async initializeConfig(params: CrawlerArgs): Promise<CrawlerConfig> {
     const collection = this.getCollectionName(params);
     const paths = this.initializePaths(params, collection);
 
     const logFilename = path.join(
       paths.logDir,
-      `crawl-${new Date().toISOString().replace(/[^\d]/g, "")}.log`
+      `crawl-${new Date().toISOString().replace(/[^\d]/g, "")}.log`,
     );
 
     // Tính toán maxPageTime
@@ -125,7 +125,36 @@ export class ConfigManager implements IConfigManager {
         : params.maxPageLimit;
     }
 
-    return {
+    if (params.overwrite) {
+      try {
+        fs.rmSync(paths.collDir, { recursive: true, force: true });
+      } catch (e) {
+        logger.error(`Unable to clear ${paths.collDir}`, e);
+      }
+    }
+
+    if (!params.headless && !process.env.NO_XVFB) {
+      // Chỉ chạy Xvfb trên Linux/Unix
+      if (process.platform !== "win32") {
+        child_process.spawn(
+          "Xvfb",
+          [
+            DISPLAY,
+            "-listen",
+            "tcp",
+            "-screen",
+            "0",
+            process.env.GEOMETRY || "",
+            "-ac",
+            "+extension",
+            "RANDR",
+          ],
+          { detached: RUN_DETACHED },
+        );
+      }
+    }
+
+    this.config = {
       params,
 
       // Paths
@@ -175,11 +204,12 @@ export class ConfigManager implements IConfigManager {
       postCrawling: false,
 
       // Behaviors
-      customBehaviors: "",
+      customBehaviors: params.customBehaviors
+        ? await this.loadCustomBehaviors(params.customBehaviors as string[])
+        : "",
       behaviorsChecked: false,
 
       // Other
-      crawlState: null,
       logFH: null,
       captureBasePrefix: "",
       infoString: "",
@@ -190,6 +220,28 @@ export class ConfigManager implements IConfigManager {
       maxHeapTotal: 0,
       driver: null,
     };
+
+    this.configureUA(this.config);
+    this.config.proxyServer = await initProxy(this.config.params, RUN_DETACHED);
+
+    const subprocesses: ChildProcess[] = [];
+    process.on("exit", () => {
+      for (const proc of subprocesses) {
+        proc.kill();
+      }
+    });
+
+    return this.config;
+  }
+
+  async loadCustomBehaviors(sources: string[]) {
+    let str = "";
+
+    for (const { contents } of await collectCustomBehaviors(sources)) {
+      str += `self.__bx_behaviors.load(${contents});\n`;
+    }
+
+    return str;
   }
 
   // Tách các phương thức khởi tạo config thành các hàm nhỏ hơn
@@ -198,6 +250,38 @@ export class ConfigManager implements IConfigManager {
       params.collection ||
       "crawl-" + new Date().toISOString().slice(0, 19).replace(/[T:-]/g, "")
     );
+  }
+
+  public async getBrowserOptions() {
+    return {
+      profileUrl: this.config.params.profile,
+      headless: this.config.params.headless,
+      emulateDevice: this.config.emulateDevice,
+      swOpt: this.config.params.serviceWorker,
+      chromeOptions: {
+        proxy: this.config.proxyServer,
+        userAgent: this.config.emulateDevice.userAgent,
+        extraArgs: this.extraChromeArgs(),
+      },
+
+      ondisconnect: (err: any) => {
+        this.config.interrupted = true;
+        logger.error(
+          "Browser disconnected (crashed?), interrupting crawl",
+          err,
+          "browser",
+        );
+        this.config.browserCrashed = true;
+      },
+    } as any;
+  }
+
+  extraChromeArgs() {
+    const args = [];
+    if (this.config.params.lang) {
+      args.push(`--accept-lang=${this.config.params.lang}`);
+    }
+    return args;
   }
 
   configureUA(config: CrawlerConfig) {
@@ -231,16 +315,6 @@ export class ConfigManager implements IConfigManager {
     };
   }
 
-  async loadCustomBehaviors(sources: string[]) {
-    let str = "";
-
-    for (const { contents } of await collectCustomBehaviors(sources)) {
-      str += `self.__bx_behaviors.load(${contents});\n`;
-    }
-
-    return str;
-  }
-
   async initDirectories(): Promise<void> {
     await fsp.mkdir(this.config.logDir, { recursive: true });
     await fsp.mkdir(this.config.archivesDir, { recursive: true });
@@ -248,6 +322,8 @@ export class ConfigManager implements IConfigManager {
   }
 
   async initLogging(): Promise<void> {
+    const logFH = fs.createWriteStream(this.config.logFilename, { flags: "a" });
+    logger.setExternalLogStream(logFH);
     logger.setDebugLogging(this.config.params.logging.includes("debug"));
     logger.setLogLevel(this.config.params.logLevel);
     logger.setContext(this.config.params.logContext);
@@ -257,5 +333,32 @@ export class ConfigManager implements IConfigManager {
     }
 
     logger.debug("Writing log to: " + this.config.logFilename, {}, "general");
+
+    this.config.infoString = await getInfoString();
+    logger.info(this.config.infoString);
+
+    logger.info("Seeds", this.config.params.scopedSeeds);
+    logger.info("Link Selectors", this.config.params.selectLinks);
+
+    if (this.config.params.behaviorOpts) {
+      logger.info("Behavior Options", this.config.params.behaviorOpts);
+    } else {
+      logger.info("Behaviors disabled");
+    }
+
+    if (this.config.params.profile) {
+      logger.info("With Browser Profile", { url: this.config.params.profile });
+    }
+
+    if (this.config.params.overwrite) {
+      logger.debug(`Clearing ${this.config.collDir} before starting`);
+    }
+
+    if (!this.config.params.headless && !process.env.NO_XVFB) {
+      // Chỉ chạy Xvfb trên Linux/Unix
+      if (process.platform == "win32") {
+        logger.debug("Skipping Xvfb on Windows platform");
+      }
+    }
   }
 }

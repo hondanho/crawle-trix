@@ -20,6 +20,7 @@ module.exports = {
   },
   rules: {
     "no-constant-condition": ["error", { checkLoops: false }],
+    '@typescript-eslint/no-explicit-any': 'off',
     "no-use-before-define": [
       "error",
       {

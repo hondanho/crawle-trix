@@ -5,7 +5,8 @@ import { logger } from "./logger.js";
 
 import { MAX_DEPTH } from "./constants.js";
 import { ScopedSeed } from "./seeds.js";
-import { Frame } from "puppeteer-core";
+import { CDPSession, Frame, Page } from "puppeteer-core";
+import { CrawlerConfig } from "../services/config-manager.js";
 
 // ============================================================================
 export enum LoadState {
@@ -77,7 +78,9 @@ export class PageState {
 
   logDetails = {};
 
-  constructor(redisData: QueueEntry) {
+  config: CrawlerConfig;
+
+  constructor(redisData: QueueEntry, config: CrawlerConfig) {
     this.url = redisData.url;
     this.seedId = redisData.seedId;
     this.depth = redisData.depth;
@@ -87,8 +90,25 @@ export class PageState {
     }
     this.pageid = redisData.pageid || uuidv4();
     this.status = 0;
+    this.config = config;
   }
 }
+
+export type WorkerOpts = {
+  page: Page;
+  cdp: CDPSession;
+  workerid: WorkerId;
+  // eslint-disable-next-line @typescript-eslint/ban-types
+  callbacks: Record<string, Function>;
+  markPageUsed: () => void;
+  frameIdToExecId: Map<string, number>;
+  isAuthSet?: boolean;
+};
+
+// ===========================================================================
+export type WorkerState = WorkerOpts & {
+  data: PageState;
+};
 
 // ============================================================================
 declare module "ioredis" {
@@ -542,7 +562,7 @@ return inx;
     );
   }
 
-  async nextFromQueue() {
+  async nextFromQueue(config: CrawlerConfig) {
     const json = await this._getNext();
     let data;
 
@@ -559,7 +579,7 @@ return inx;
 
     await this.markStarted(data.url);
 
-    return new PageState(data);
+    return new PageState(data, config);
   }
 
   async has(url: string) {

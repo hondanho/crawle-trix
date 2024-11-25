@@ -7,7 +7,6 @@ export function sleep(seconds: number) {
 // TODO: Fix this the next time the file is edited.
 
 export function timedRun(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   promise: Promise<any>,
   seconds: number,
   message = "Promise timed out",

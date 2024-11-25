@@ -27,7 +27,6 @@ export function getEnvProxyUrl() {
 }
 
 export async function initProxy(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   params: Record<string, any>,
   detached: boolean,
 ): Promise<string | undefined> {
@@ -82,7 +81,6 @@ export function createDispatcher(
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function runSSHD(params: Record<string, any>, detached: boolean) {
   const { proxyServer } = params;
   if (!proxyServer || !proxyServer.startsWith("ssh://")) {

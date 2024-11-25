@@ -1,12 +1,12 @@
 #!/usr/bin/env -S node --experimental-global-webcrypto
 
+import dotenv from "dotenv";
+
 import { logger } from "./util/logger.js";
 import { setExitOnRedisError } from "./util/redis.js";
-import { Crawler } from "./services/crawler/crawler.js";
+import { Crawler } from "./services/crawler.js";
 import connectDB from "./db.js";
 import { seedDatabase } from "./seeddata.js";
-import dotenv from "dotenv";
-import { CrawlerArgs, parseArgs } from "./util/argParser.js";
 
 let crawler: Crawler | null = null;
 
@@ -29,17 +29,16 @@ async function handleTerminate(signame: string) {
   setExitOnRedisError();
 
   try {
-    await crawler.checkCanceled();
+    await crawler.stateManager.checkCanceled();
 
     if (!crawler.configManager.config.interrupted) {
       logger.info("SIGNAL: gracefully finishing current pages...");
-      crawler.gracefulFinishOnInterrupt();
+      crawler.stateManager.gracefulFinishOnInterrupt();
     } else if (forceTerm || Date.now() - lastSigInt > 200) {
       logger.info("SIGNAL: stopping crawl now...");
-      await crawler.setStatusAndExit(0, "canceled");
+      await crawler.stateManager.setStatusAndExit(0, "canceled");
     }
     lastSigInt = Date.now();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (e: any) {
     logger.error("Error stopping crawl after receiving termination signal", e);
   }
@@ -59,7 +58,6 @@ await connectDB();
 await seedDatabase();
 // await scheduleJobs();
 
-const params = parseArgs() as CrawlerArgs;
-crawler = new Crawler(params);
+crawler = new Crawler();
 await crawler.init();
 await crawler.crawl();

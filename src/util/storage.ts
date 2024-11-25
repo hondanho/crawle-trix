@@ -14,7 +14,8 @@ import { logger } from "./logger.js";
 // @ts-expect-error (incorrect types on get-folder-size)
 import getFolderSize from "get-folder-size";
 
-import { HTTPResponse } from "puppeteer-core";
+import { HTTPResponse, Page } from "puppeteer-core";
+import { collectLinkAssets } from "./dom.js";
 
 const DEFAULT_REGION = "us-east-1";
 
@@ -34,7 +35,6 @@ export class S3StorageSync {
   // TODO: Fix this the next time the file is edited.
 
   constructor(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     urlOrData: string | any,
     {
       webhookUrl,
@@ -155,7 +155,7 @@ export async function getDirSize(dir: string): Promise<number> {
 export async function checkDiskUtilization(
   collDir: string,
   // TODO: Fix this the next time the file is edited.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   params: Record<string, any>,
   archiveDirSize: number,
   dfOutput = null,
@@ -260,7 +260,7 @@ export async function getDiskUsage(path = "/crawls", dfOutput = null) {
   const rows = lines.slice(1).map((line) => {
     const values = line.split(/\s+/gi);
     // TODO: Fix this the next time the file is edited.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     return keys.reduce((o: Record<string, any>, k, index) => {
       o[k] = values[index];
       return o;
@@ -286,13 +286,18 @@ function checksumFile(hashName: string, path: string): Promise<string> {
   });
 }
 
-type Resource = { url: string; type: string; response?: HTTPResponse };
+export type Resource = { url: string; type: string; response?: HTTPResponse };
 
 export async function downloadAllResources(
-  resources: Resource[],
-  logDetails: object,
+  page: Page,
+  resourceOlds: Resource[],
+  originDomain: string,
+
   archivesDir: string,
 ) {
+  // Collect assets
+  const resources = await collectLinkAssets(resourceOlds, page, originDomain);
+
   // Sau khi page load xong, lưu các resource
   const missingLinks = resources.filter((rp) => !rp.response);
 
@@ -345,7 +350,7 @@ function getResourcePath(url: string): string {
   return urlPath;
 }
 
-async function downloadResource(
+export async function downloadResource(
   buffer: Buffer,
   url: string,
   archivesDir: string,
@@ -402,8 +407,18 @@ export async function downloadResourceFromUrl(
 
     await fsp.mkdir(path.dirname(fullPath), { recursive: true });
 
+    // Thêm headers cần thiết
+    const headers = {
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+      Accept: "*/*",
+      "Accept-Encoding": "gzip, deflate, br",
+      Connection: "keep-alive",
+      Referer: new URL(url).origin,
+    };
+
     // Thực hiện fetch request
-    const response = await fetch(url);
+    const response = await fetch(url, { headers });
     const buffer = Buffer.from(await response.arrayBuffer());
 
     await fsp.mkdir(path.dirname(fullPath), { recursive: true });
