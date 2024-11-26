@@ -25,8 +25,8 @@ scopeType: custom
 # any: Crawl tất cả URLs từ bất kỳ nơi nào
 # custom: Chỉ dùng cho include
 
-workers: 2
-pageLimit: 5
+workers: 1
+pageLimit: 10
 # depth: 1 # sâu bao nhiêu 
 #Depth = 0: Chỉ crawl các URL seed (URL gốc) được cung cấp
 #Depth = 1: Crawl URL seed và các link trực tiếp từ trang seed

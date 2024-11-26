@@ -150,7 +150,7 @@ export class PageWorker {
           page,
           cdp,
           workerid,
-          seedId:seedId,
+          seedId: seedId,
           callbacks: this.callbacks,
           frameIdToExecId: new Map<string, number>(),
           markPageUsed: () => {
