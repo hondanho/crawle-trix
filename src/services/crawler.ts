@@ -43,6 +43,7 @@ export class Crawler {
     try {
       await this.stateManager._addInitialSeeds(this.urlExtractor);
       await runWorkers(this);
+
       this.configManager.config.postCrawling = true;
       logger.success("Crawling done");
       logger.setExternalLogStream(null);
@@ -55,26 +56,10 @@ export class Crawler {
 
   public async crawlPage(opts: WorkerState): Promise<void> {
     const { page, data, callbacks, workerid } = opts;
-
-    data.callbacks = callbacks;
-    const { url, seedId } = data;
-    const auth = this.configManager.config.seeds[seedId].authHeader();
-    if (auth) {
-      logger.debug("Setting HTTP basic auth for seed", {
-        seedId,
-        seedUrl: this.configManager.config.seeds[seedId].url,
-      });
-    }
-    const logDetails = { page: url, workerid };
-    data.logDetails = logDetails;
-    data.workerid = workerid;
     opts.markPageUsed();
-    if (auth) {
-      await page.setExtraHTTPHeaders({ Authorization: auth });
-      opts.isAuthSet = true;
-    } else if (opts.isAuthSet) {
-      await page.setExtraHTTPHeaders({});
-    }
+    data.callbacks = callbacks;
+    data.logDetails = { page: data.url, workerid };
+    data.workerid = workerid;
 
     // Crawl data
     let crawledData: any;

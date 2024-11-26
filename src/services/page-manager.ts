@@ -10,8 +10,8 @@ import { Browser } from "../util/browser.js";
 import { formatErr, logger } from "../util/logger.js";
 import { ConfigManager, CrawlerConfig } from "./config-manager.js";
 import { collectCustomBehaviors } from "../util/file_reader.js";
-import { WorkerOpts } from "../util/state.js";
 import { sleep, timedRun } from "../util/timing.js";
+import { WorkerOpts } from "../util/worker.js";
 
 const behaviors = fs.readFileSync(
   new URL(
@@ -35,8 +35,10 @@ export class PageManager {
     page,
     workerid,
     cdp,
+    seedId,
     callbacks,
     frameIdToExecId,
+    isAuthSet,
   }: WorkerOpts) {
     await this.browser.setupPage({ page, cdp });
 
@@ -115,6 +117,21 @@ self.__bx_behaviors.selectMainBehavior();
       }
 
       await this.browser.addInitScript(page, initScript);
+    }
+
+    const auth = this.configManager.config.seeds[seedId].authHeader();
+    if (auth) {
+      logger.debug("Setting HTTP basic auth for seed", {
+        seedId,
+        seedUrl: this.configManager.config.seeds[seedId].url,
+      });
+    }
+
+    if (auth) {
+      await page.setExtraHTTPHeaders({ Authorization: auth });
+      isAuthSet = true;
+    } else if (isAuthSet) {
+      await page.setExtraHTTPHeaders({});
     }
   }
 

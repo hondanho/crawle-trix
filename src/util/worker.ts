@@ -17,6 +17,7 @@ export type WorkerOpts = {
   page: Page;
   cdp: CDPSession;
   workerid: WorkerId;
+  seedId: number;
   // eslint-disable-next-line @typescript-eslint/ban-types
   callbacks: Record<string, Function>;
   markPageUsed: () => void;
@@ -104,7 +105,7 @@ export class PageWorker {
     }
   }
 
-  async initPage(url: string): Promise<WorkerOpts> {
+  async initPage(url: string, seedId: number): Promise<WorkerOpts> {
     let reuse = !this.crashed && !!this.opts && !!this.page;
     if (!this.alwaysReuse) {
       reuse = this.reuseCount <= MAX_REUSE && this.isSameOrigin(url);
@@ -149,6 +150,7 @@ export class PageWorker {
           page,
           cdp,
           workerid,
+          seedId:seedId,
           callbacks: this.callbacks,
           frameIdToExecId: new Map<string, number>(),
           markPageUsed: () => {
@@ -309,7 +311,7 @@ export class PageWorker {
         }
 
         // init page (new or reuse)
-        const opts = await this.initPage(data.url);
+        const opts = await this.initPage(data.url, data.seedId);
 
         // run timed crawl of page
         await this.timedCrawlPage({ ...opts, data });

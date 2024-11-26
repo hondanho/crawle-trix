@@ -5,7 +5,7 @@ import { logger } from "./logger.js";
 
 import { MAX_DEPTH } from "./constants.js";
 import { ScopedSeed } from "./seeds.js";
-import { CDPSession, Frame, Page } from "puppeteer-core";
+import { Frame } from "puppeteer-core";
 import { CrawlerConfig } from "../services/config-manager.js";
 
 // ============================================================================
@@ -93,22 +93,6 @@ export class PageState {
     this.config = config;
   }
 }
-
-export type WorkerOpts = {
-  page: Page;
-  cdp: CDPSession;
-  workerid: WorkerId;
-  // eslint-disable-next-line @typescript-eslint/ban-types
-  callbacks: Record<string, Function>;
-  markPageUsed: () => void;
-  frameIdToExecId: Map<string, number>;
-  isAuthSet?: boolean;
-};
-
-// ===========================================================================
-export type WorkerState = WorkerOpts & {
-  data: PageState;
-};
 
 // ============================================================================
 declare module "ioredis" {
