@@ -301,7 +301,10 @@ export class PageWorker {
       if (data) {
         // filter out any out-of-scope pages right away
         if (
-          !(await this.crawler.stateManager.isInScope({...data, seed}, this.logDetails))
+          !(await this.crawler.stateManager.isInScope(
+            { ...data, seed },
+            this.logDetails,
+          ))
         ) {
           logger.info("Page no longer in scope", data);
           await crawlState.markExcluded(data.url);
@@ -349,7 +352,11 @@ export class PageWorker {
 const workers: PageWorker[] = [];
 
 // ===========================================================================
-export async function runWorkers(crawler: Crawler, seed: ScopedSeed, alwaysReuse = false) {
+export async function runWorkers(
+  crawler: Crawler,
+  seed: ScopedSeed,
+  alwaysReuse = false,
+) {
   const numWorkers = crawler.config.params.workers;
   const maxPageTime = seed.crawlConfig.maxPageTime;
   logger.info(`Creating ${numWorkers} workers`, {}, "worker");

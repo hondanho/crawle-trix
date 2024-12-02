@@ -41,13 +41,16 @@ const config = configManager.config;
 // init seed
 const seedModel = await SeedModel.findOne();
 if (seedModel) {
-  const scopedSeed = new ScopedSeed({
-    id: seedModel.id.toString(),
-    url: seedModel.url,
-    name: seedModel.name,
-    dataConfig: seedModel.dataConfig,
-    crawlConfig: seedModel.crawlConfig,
-  }, config);
+  const scopedSeed = new ScopedSeed(
+    {
+      id: seedModel.id.toString(),
+      url: seedModel.url,
+      name: seedModel.name,
+      dataConfig: seedModel.dataConfig,
+      crawlConfig: seedModel.crawlConfig,
+    },
+    config,
+  );
 
   const crawler = new Crawler(scopedSeed);
   await crawler.init();

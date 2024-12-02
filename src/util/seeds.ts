@@ -4,7 +4,13 @@ import { KnownDevices as devices } from "puppeteer-core";
 
 import { logger } from "./logger.js";
 import { interpolateFilename } from "./storage.js";
-import { BEHAVIOR_LOG_FUNC, DEFAULT_SELECTORS, ExtractSelector, MAX_DEPTH, PAGE_OP_TIMEOUT_SECS } from "./constants.js";
+import {
+  BEHAVIOR_LOG_FUNC,
+  DEFAULT_SELECTORS,
+  ExtractSelector,
+  MAX_DEPTH,
+  PAGE_OP_TIMEOUT_SECS,
+} from "./constants.js";
 import { ISeed, ISeedConfig, ISeedDataConfig } from "../models/seed.js";
 import { Browser } from "./browser.js";
 import { collectCustomBehaviors } from "./file_reader.js";
@@ -108,7 +114,9 @@ export class ScopedSeed extends SeedBase {
     if (this.crawlConfig.enableBehaviors) {
       const behaviorOpts: { [key: string]: string | boolean } = {};
       if (this.crawlConfig.behaviors.length > 0) {
-        this.crawlConfig.behaviors.forEach((x: string) => (behaviorOpts[x] = true));
+        this.crawlConfig.behaviors.forEach(
+          (x: string) => (behaviorOpts[x] = true),
+        );
         behaviorOpts.log = BEHAVIOR_LOG_FUNC;
         behaviorOpts.startEarly = true;
         this.crawlConfig.behaviorOpts = JSON.stringify(behaviorOpts);
@@ -132,7 +140,10 @@ export class ScopedSeed extends SeedBase {
 
     let selectLinks: ExtractSelector[];
     const parser = createParser();
-    if (this.crawlConfig.selectLinks && this.crawlConfig.selectLinks.length > 0) {
+    if (
+      this.crawlConfig.selectLinks &&
+      this.crawlConfig.selectLinks.length > 0
+    ) {
       selectLinks = this.crawlConfig.selectLinks.map((x: string) => {
         const parts = x.split("->");
         const selector = parts[0];
@@ -152,7 +163,10 @@ export class ScopedSeed extends SeedBase {
     this.crawlConfig.selectLinkOtps = selectLinks;
 
     if (this.crawlConfig.netIdleWait === -1) {
-      if (this.crawlConfig.scopeType === "page" || this.crawlConfig.scopeType === "page-spa") {
+      if (
+        this.crawlConfig.scopeType === "page" ||
+        this.crawlConfig.scopeType === "page-spa"
+      ) {
         this.crawlConfig.netIdleWait = 15;
       } else {
         this.crawlConfig.netIdleWait = 2;
@@ -175,7 +189,9 @@ export class ScopedSeed extends SeedBase {
     this.crawlConfig.exclude = parseRx(this.crawlConfig.excludeStr);
 
     if (!this.crawlConfig.scopeType) {
-      this.crawlConfig.scopeType = this.crawlConfig.include.length ? "custom" : "prefix";
+      this.crawlConfig.scopeType = this.crawlConfig.include.length
+        ? "custom"
+        : "prefix";
     }
 
     if (this.crawlConfig.scopeType !== "custom") {
@@ -197,7 +213,10 @@ export class ScopedSeed extends SeedBase {
     this.crawlConfig.maxDepth =
       this.crawlConfig.depth < 0 ? MAX_DEPTH : this.crawlConfig.depth;
 
-    this.crawlConfig.proxyServer = await initProxy(this.crawlConfig, RUN_DETACHED);
+    this.crawlConfig.proxyServer = await initProxy(
+      this.crawlConfig,
+      RUN_DETACHED,
+    );
 
     if (this.crawlConfig.customBehaviors) {
       this.crawlConfig.customBehaviorsOtps = await this.loadCustomBehaviors(
@@ -226,7 +245,7 @@ export class ScopedSeed extends SeedBase {
       timeout: this.crawlConfig.pageLoadTimeout * 1000,
     };
 
-    const captureBasePrefix = '';
+    const captureBasePrefix = "";
     this.crawlConfig.adBlockRules = new AdBlockRules(
       captureBasePrefix,
       this.crawlConfig.adBlockMessage,
@@ -297,7 +316,8 @@ export class ScopedSeed extends SeedBase {
 
     // suffix to append to default userAgent
     if (this.crawlConfig.userAgentSuffix) {
-      this.crawlConfig.emulateDevice.userAgent += " " + this.crawlConfig.userAgentSuffix;
+      this.crawlConfig.emulateDevice.userAgent +=
+        " " + this.crawlConfig.userAgentSuffix;
     }
 
     return this.crawlConfig.emulateDevice.userAgent;
@@ -308,13 +328,16 @@ export class ScopedSeed extends SeedBase {
   }
 
   newScopedSeed(url: string) {
-    return new ScopedSeed({
-      url,
-      name: this.name,
-      dataConfig: this.dataConfig,
-      crawlConfig: this.crawlConfig,
-      id: this.id,
-    }, this.config);
+    return new ScopedSeed(
+      {
+        url,
+        name: this.name,
+        dataConfig: this.dataConfig,
+        crawlConfig: this.crawlConfig,
+        id: this.id,
+      },
+      this.config,
+    );
   }
 
   addExclusion(value: string | RegExp) {
@@ -434,7 +457,10 @@ export class ScopedSeed extends SeedBase {
   }
 
   isAtMaxDepth(depth: number, extraHops: number) {
-    return depth >= this.crawlConfig.maxDepth && extraHops >= this.crawlConfig.maxExtraHops;
+    return (
+      depth >= this.crawlConfig.maxDepth &&
+      extraHops >= this.crawlConfig.maxExtraHops
+    );
   }
 
   isIncluded(
@@ -480,7 +506,11 @@ export class ScopedSeed extends SeedBase {
     let isOOS = false;
 
     if (!inScope) {
-      if (!noOOS && this.crawlConfig.maxExtraHops && extraHops <= this.crawlConfig.maxExtraHops) {
+      if (
+        !noOOS &&
+        this.crawlConfig.maxExtraHops &&
+        extraHops <= this.crawlConfig.maxExtraHops
+      ) {
         isOOS = true;
       } else {
         //console.log(`Not in scope ${url} ${this.include}`);

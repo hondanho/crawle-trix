@@ -47,14 +47,16 @@ export class PageManager {
     await this.setupExecContextEvents(cdp, frameIdToExecId);
 
     if (
-      (this.seed.crawlConfig.adBlockRules &&
-        this.seed.crawlConfig.blockAds) ||
+      (this.seed.crawlConfig.adBlockRules && this.seed.crawlConfig.blockAds) ||
       this.seed.crawlConfig.blockRules ||
       this.seed.crawlConfig.originOverride
     ) {
       await page.setRequestInterception(true);
 
-      if (this.seed.crawlConfig.adBlockRules && this.seed.crawlConfig.blockAds) {
+      if (
+        this.seed.crawlConfig.adBlockRules &&
+        this.seed.crawlConfig.blockAds
+      ) {
         await this.seed.crawlConfig.adBlockRules.initPage(this.browser, page);
       }
 

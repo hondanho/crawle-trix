@@ -59,10 +59,7 @@ export class URLExtractor {
     data.status = resp?.status() || 200;
     const isChromeError = page.url().startsWith("chrome-error://");
     let failed = isChromeError;
-    if (
-      this.config.params.failOnInvalidStatus &&
-      data.status >= 400
-    ) {
+    if (this.config.params.failOnInvalidStatus && data.status >= 400) {
       // Handle 4xx or 5xx response as a page load error
       failed = true;
     }
@@ -133,13 +130,7 @@ export class URLExtractor {
     const { depth, extraHops = 0, filteredFrames, callbacks } = data;
 
     callbacks.addLink = async (url: string) => {
-      await this.queueInScopeUrls(
-        [url],
-        depth,
-        extraHops,
-        false,
-        logDetails,
-      );
+      await this.queueInScopeUrls([url], depth, extraHops, false, logDetails);
     };
 
     const loadLinks = (options: {
@@ -260,13 +251,7 @@ export class URLExtractor {
     },
     logDetails = {},
   ) {
-    return this.seed.isIncluded(
-      url,
-      depth,
-      extraHops,
-      logDetails,
-      noOOS,
-    );
+    return this.seed.isIncluded(url, depth, extraHops, logDetails, noOOS);
   }
 
   async queueUrl(
@@ -282,7 +267,14 @@ export class URLExtractor {
     }
 
     const result = await this.stateManager.crawlState?.addToQueue(
-      { pageid: pageId, ts, depth, extraHops, url, seedId: this.seed.id.toString() },
+      {
+        pageid: pageId,
+        ts,
+        depth,
+        extraHops,
+        url,
+        seedId: this.seed.id.toString(),
+      },
       this.seed.crawlConfig.pageLimit,
     );
 

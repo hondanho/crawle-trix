@@ -203,11 +203,7 @@ export class StateManager {
     try {
       await sitemapper.parse(this.seed.crawlConfig.sitemap, this.seed.url);
     } catch (e) {
-      logger.warn(
-        "Sitemap for seed failed",
-        { ...formatErr(e) },
-        "sitemap",
-      );
+      logger.warn("Sitemap for seed failed", { ...formatErr(e) }, "sitemap");
       return;
     }
 
@@ -400,10 +396,7 @@ export class StateManager {
 
       await this.serializeConfig(false);
 
-      await this.checkLimits(
-        this.config.params,
-        this.config.collDir,
-      );
+      await this.checkLimits(this.config.params, this.config.collDir);
     } else {
       await this.crawlState.markFailed(url);
 
@@ -417,10 +410,7 @@ export class StateManager {
         logger.fatal("Seed Page Load Failed, failing crawl", {}, "general", 1);
       }
 
-      await this.checkLimits(
-        this.config.params,
-        this.config.collDir,
-      );
+      await this.checkLimits(this.config.params, this.config.collDir);
     }
   }
 
@@ -459,10 +449,7 @@ export class StateManager {
 
     const ts = now.toISOString().slice(0, 19).replace(/[T:-]/g, "");
 
-    const crawlDir = path.join(
-      this.config.collDir,
-      "collections",
-    );
+    const crawlDir = path.join(this.config.collDir, "collections");
 
     await fsp.mkdir(crawlDir, { recursive: true });
 
@@ -489,8 +476,7 @@ export class StateManager {
     this.config.saveStateFiles.push(filename);
 
     if (
-      this.config.saveStateFiles.length >
-      this.config.params.saveStateHistory
+      this.config.saveStateFiles.length > this.config.params.saveStateHistory
     ) {
       const oldFilename = this.config.saveStateFiles.shift();
       logger.info(`Removing old save-state: ${oldFilename}`);

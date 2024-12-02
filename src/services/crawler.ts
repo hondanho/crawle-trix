@@ -71,7 +71,7 @@ export class Crawler {
     await this.urlExtractor.preExtractLinks({
       crawledData,
       data,
-      page
+      page,
     });
     await this.urlExtractor.extractLinks(
       page,

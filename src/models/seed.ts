@@ -88,18 +88,24 @@ const SeedSchema: Schema = new Schema({
   name: { type: String, required: true },
   url: { type: String, required: true },
   dataConfig: {
-    title: [{
-      regex: { type: String, required: false },
-      selector: { type: String, required: false }
-    }],
-    content: [{
-      regex: { type: String, required: false },
-      selector: { type: String, required: false }
-    }],
-    image: [{
-      regex: { type: String, required: false },
-      selector: { type: String, required: false }
-    }]
+    title: [
+      {
+        regex: { type: String, required: false },
+        selector: { type: String, required: false },
+      },
+    ],
+    content: [
+      {
+        regex: { type: String, required: false },
+        selector: { type: String, required: false },
+      },
+    ],
+    image: [
+      {
+        regex: { type: String, required: false },
+        selector: { type: String, required: false },
+      },
+    ],
   },
   crawlConfig: {
     blockAds: { type: Boolean, required: true, default: true },
@@ -135,8 +141,16 @@ const SeedSchema: Schema = new Schema({
     sitemapToDate: { type: String, required: false, default: null },
     behaviors: [{ type: String }],
     dedupPolicy: { type: String, required: true, default: "skip" },
-    adBlockMessage: { type: String, required: true, default: "Blocked by AdBlock rules" },
-    blockMessage: { type: String, required: true, default: "Blocked by Block rules" },
+    adBlockMessage: {
+      type: String,
+      required: true,
+      default: "Blocked by AdBlock rules",
+    },
+    blockMessage: {
+      type: String,
+      required: true,
+      default: "Blocked by Block rules",
+    },
     overwrite: { type: Boolean, required: true, default: false },
     waitOnDone: { type: Boolean, required: true, default: false },
     netIdleWait: { type: Number, required: true, default: -1 },
@@ -148,7 +162,7 @@ const SeedSchema: Schema = new Schema({
     schedule: { type: String, required: false },
     mobileDevice: { type: String, required: false },
     emulateDevice: { type: String, required: false },
-    userAgent: { type: String, required: false }, 
+    userAgent: { type: String, required: false },
     userAgentSuffix: { type: String, required: false },
     useSitemap: { type: Boolean, required: true, default: false },
     automated: { type: Boolean, required: true, default: false },
@@ -161,7 +175,7 @@ const SeedSchema: Schema = new Schema({
     interrupted: { type: Boolean, required: true, default: false },
   },
   createdAt: { type: Date, default: Date.now },
-  updatedAt: { type: Date, default: Date.now }
+  updatedAt: { type: Date, default: Date.now },
 });
 
 // Xuất Model

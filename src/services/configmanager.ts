@@ -145,7 +145,7 @@ export class ConfigManager {
     await this.initDirectories();
     await this.initLogging();
   }
-  
+
   private initializePaths(params: CrawlerArgs, collection: string) {
     const cwd = params.cwd || process.cwd();
     const collDir = path.join(cwd, "collections", collection);

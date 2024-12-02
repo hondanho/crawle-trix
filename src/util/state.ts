@@ -506,7 +506,7 @@ return inx;
     const dataQueue: QueueEntry = {
       ...data,
       added,
-      seedId: data.seedId
+      seedId: data.seedId,
     };
 
     // return codes
@@ -662,7 +662,6 @@ return inx;
     }
 
     if (state.extraSeeds) {
-
       for (const extraSeed of state.extraSeeds) {
         const { newUrl }: ExtraRedirectSeed = JSON.parse(extraSeed);
         await this.addExtraSeed(seed, newUrl);
@@ -828,26 +827,19 @@ return inx;
   }
 
   // add extra seeds from redirect
-  async addExtraSeed(
-    seed: ScopedSeed,
-    newUrl: string,
-  ) {
+  async addExtraSeed(seed: ScopedSeed, newUrl: string) {
     if (!seed) {
-      logger.fatal(
-        "State load, original seed missing",
-        { seed },
-        "state",
-      );
+      logger.fatal("State load, original seed missing", { seed }, "state");
     }
     const redirectSeed: ExtraRedirectSeed = { seed, newUrl };
     const seedData = JSON.stringify(redirectSeed);
     await this.redis.addnewseed(
-        this.esKey,
-        this.esMap,
-        this.skey,
-        seedData,
-        newUrl,
-      );
+      this.esKey,
+      this.esMap,
+      this.skey,
+      seedData,
+      newUrl,
+    );
     seed = seed.newScopedSeed(newUrl);
 
     //const newSeedId = seeds.length - 1;

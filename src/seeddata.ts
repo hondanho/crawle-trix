@@ -26,8 +26,8 @@ export const seedDatabase = async () => {
               regex: "h1.entry-title",
             },
             {
-              selector: "h1.entry-title", 
-            }
+              selector: "h1.entry-title",
+            },
           ],
           content: [
             {
@@ -57,13 +57,13 @@ export const seedDatabase = async () => {
             "https://truyensex.moe/quan-tri-huyen/",
             "https://truyensex.moe/quan-tri-huyen/.*",
             "https://truyensex.moe/tag/",
-            "https://truyensex.moe/tag/.*"
+            "https://truyensex.moe/tag/.*",
           ],
           sitemap: null,
           depth: -1,
           includeStr: [
             "https://truyensex.moe/12-nu-than/",
-            "https://truyensex.moe/12-nu-than/.*"
+            "https://truyensex.moe/12-nu-than/.*",
           ],
           extraHops: 0,
           auth: null,
@@ -76,9 +76,8 @@ export const seedDatabase = async () => {
           maxPageTime: 0,
           adBlockRules: null,
           saveAllResources: true,
-          
-        }
-      }
+        },
+      },
     ]);
     console.log("Seeded seeds:", seeds);
 
@@ -91,7 +90,7 @@ export const seedDatabase = async () => {
         content: "This is the content of example news article 1.",
         images: ["https://example.com/images/article1.jpg"],
         status: "pending",
-      }
+      },
     ]);
     console.log("Seeded crawled content:", contents);
 
@@ -102,7 +101,7 @@ export const seedDatabase = async () => {
         url: "https://example.com/news/article1",
         type: "crawl",
         status: "completed",
-      }
+      },
     ]);
     console.log("Seeded jobs:", jobs);
 
