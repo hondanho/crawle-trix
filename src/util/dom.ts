@@ -125,7 +125,7 @@ export async function collectLinkAssets(
     // Thu thập images
     document.querySelectorAll("img[src]").forEach((img) => {
       const src = img.getAttribute("src");
-      if (src) {
+      if (src && !src.startsWith("data:")) {
         try {
           const url = new URL(src, window.location.href);
           if (url.origin === domain) {

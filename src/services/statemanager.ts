@@ -15,19 +15,21 @@ import { getDirSize } from "../util/storage.js";
 import { formatErr, LogDetails, logger } from "../util/logger.js";
 import { ScopedSeed } from "../util/seeds.js";
 import { initRedis } from "../util/redis.js";
-import { ConfigManager, CrawlerConfig } from "./config-manager.js";
+import { CrawlerConfig } from "./configmanager.js";
 import { SitemapReader } from "../util/sitemapper.js";
-import { URLExtractor } from "./url-extractor.js";
 import { SITEMAP_INITIAL_FETCH_TIMEOUT_SECS } from "../util/constants.js";
+import { URLExtractor } from "./urlextractor.js";
 
 // Quản lý state của crawler
 export class StateManager {
   public crawlState: RedisCrawlState;
   private startTime: number;
-  private configManager: ConfigManager;
+  private config: CrawlerConfig;
+  private seed: ScopedSeed;
 
-  constructor(configEnv: ConfigManager) {
-    this.configManager = configEnv;
+  constructor(seed: ScopedSeed) {
+    this.config = seed.config;
+    this.seed = seed;
     this.crawlState = null as unknown as RedisCrawlState; // Khởi tạo null và type cast
     this.startTime = Date.now();
   }
@@ -37,8 +39,8 @@ export class StateManager {
   }
 
   async initCrawlStateInRedis() {
-    const seeds = this.configManager.config.seeds;
-    const redisUrl = this.getRedisUrl(this.configManager.config);
+    // const seeds = this.config.seeds;
+    const redisUrl = this.getRedisUrl(this.config);
     if (!redisUrl.startsWith("redis://")) {
       logger.fatal(
         "stateStoreUrl must start with redis:// -- Only redis-based store currently supported",
@@ -59,25 +61,25 @@ export class StateManager {
     }
 
     logger.debug(
-      `Storing state via Redis ${redisUrl} @ key prefix "${this.configManager.config.params.crawlId}"`,
+      `Storing state via Redis ${redisUrl} @ key prefix "${this.config.params.crawlId}"`,
       {},
       "state",
     );
 
     logger.debug(
-      `Max Page Time: ${this.configManager.config.maxPageTime} seconds`,
+      `Max Page Time: ${this.seed.crawlConfig.maxPageTime} seconds`,
       {},
       "state",
     );
 
     this.crawlState = new RedisCrawlState(
       redis,
-      this.configManager.config.params.crawlId,
-      this.configManager.config.maxPageTime,
+      this.config.params.crawlId,
+      this.seed.crawlConfig.maxPageTime,
       os.hostname(),
     );
 
-    if (this.configManager.config.params.redisStoreClean) {
+    if (this.config.params.redisStoreClean) {
       // Thêm logic xóa Redis
       try {
         if (this.crawlState) {
@@ -92,32 +94,32 @@ export class StateManager {
     }
 
     // load full state from config
-    if (this.configManager.config.params.state) {
-      await this.crawlState.load(
-        this.configManager.config.params.state,
-        seeds,
-        true,
-      );
-      // otherwise, just load extra seeds
-    } else {
-      await this.loadExtraSeeds(seeds);
-    }
+    // if (this.config.params.state) {
+    //   await this.crawlState.load(
+    //     this.config.params.state,
+    //     seeds,
+    //     true,
+    //   );
+    //   // otherwise, just load extra seeds
+    // } else {
+    //   await this.loadExtraSeeds(seeds);
+    // }
 
     // clear any pending URLs from this instance
     await this.crawlState.clearOwnPendingLocks();
 
     if (
-      this.configManager.config.params.saveState === "always" &&
-      this.configManager.config.params.saveStateInterval
+      this.config.params.saveState === "always" &&
+      this.config.params.saveStateInterval
     ) {
       logger.debug(
-        `Saving crawl state every ${this.configManager.config.params.saveStateInterval} seconds, keeping last ${this.configManager.config.params.saveStateHistory} states`,
+        `Saving crawl state every ${this.config.params.saveStateInterval} seconds, keeping last ${this.config.params.saveStateHistory} states`,
         {},
         "state",
       );
     }
 
-    if (this.configManager.config.params.logErrorsToRedis) {
+    if (this.config.params.logErrorsToRedis) {
       logger.setLogErrorsToRedis(true);
       logger.setCrawlState(this.crawlState);
     }
@@ -158,22 +160,18 @@ export class StateManager {
   }
 
   gracefulFinishOnInterrupt() {
-    this.configManager.config.interrupted = true;
+    this.seed.crawlConfig.interrupted = true;
     logger.info("Crawler interrupted, gracefully finishing current pages");
     if (
-      !this.configManager.config.params.waitOnDone &&
-      !this.configManager.config.params.restartsOnError
+      !this.seed.crawlConfig.waitOnDone &&
+      !this.seed.crawlConfig.restartsOnError
     ) {
-      this.configManager.config.finalExit = true;
+      this.config.finalExit = true;
     }
   }
 
-  async parseSitemap(
-    { url, sitemap }: ScopedSeed,
-    seedId: number,
-    urlExtractor: URLExtractor,
-  ) {
-    if (!sitemap) {
+  async parseSitemap(urlExtractor: URLExtractor) {
+    if (!this.seed.crawlConfig.sitemap) {
       return;
     }
 
@@ -182,13 +180,13 @@ export class StateManager {
       return;
     }
 
-    const fromDate = this.configManager.config.params.sitemapFromDate
-      ? new Date(this.configManager.config.params.sitemapFromDate)
+    const fromDate = this.config.params.sitemapFromDate
+      ? new Date(this.config.params.sitemapFromDate)
       : undefined;
-    const toDate = this.configManager.config.params.sitemapToDate
-      ? new Date(this.configManager.config.params.sitemapToDate)
+    const toDate = this.config.params.sitemapToDate
+      ? new Date(this.config.params.sitemapToDate)
       : undefined;
-    const headers = this.configManager.config.headers;
+    const headers = this.seed.crawlConfig.headers;
 
     logger.info(
       "Fetching sitemap",
@@ -199,15 +197,15 @@ export class StateManager {
       headers,
       fromDate,
       toDate,
-      limit: this.configManager.config.pageLimit,
+      limit: this.seed.crawlConfig.pageLimit,
     });
 
     try {
-      await sitemapper.parse(sitemap, url);
+      await sitemapper.parse(this.seed.crawlConfig.sitemap, this.seed.url);
     } catch (e) {
       logger.warn(
         "Sitemap for seed failed",
-        { url, sitemap, ...formatErr(e) },
+        { ...formatErr(e) },
         "sitemap",
       );
       return;
@@ -251,7 +249,7 @@ export class StateManager {
           );
         }
         urlExtractor
-          .queueInScopeUrls(seedId, [url], 0, 0, true, {})
+          .queueInScopeUrls([url], 0, 0, true, {})
           .catch((e: any) => logger.warn("Error queuing urls", e, "links"));
         if (count >= 100 && !resolved) {
           logger.info(
@@ -267,7 +265,7 @@ export class StateManager {
   }
 
   async isCrawlRunning() {
-    if (this.configManager.config.interrupted) {
+    if (this.seed.crawlConfig.interrupted) {
       return false;
     }
 
@@ -284,67 +282,68 @@ export class StateManager {
     return true;
   }
 
-  async _addInitialSeeds(urlExtractor: URLExtractor) {
-    const seeds = this.configManager.config.seeds;
-    for (let i = 0; i < seeds.length; i++) {
-      const seed = seeds[i];
-      if (!(await this.queueUrl(i, seed.url, 0, 0))) {
-        if (this.configManager.config.limitHit) {
-          break;
-        }
+  async _addInitialSeeds(seed: ScopedSeed, urlExtractor: URLExtractor) {
+    if (!(await this.queueUrl(seed, {}, 0))) {
+      if (this.seed.crawlConfig.limitHit) {
+        return;
       }
+    }
 
-      if (seed.sitemap) {
-        await timedRun(
-          this.parseSitemap(seed, i, urlExtractor),
-          SITEMAP_INITIAL_FETCH_TIMEOUT_SECS,
-          "Sitemap initial fetch timed out",
-          { sitemap: seed.sitemap, seed: seed.url },
-          "sitemap",
-        );
-      }
+    if (seed.crawlConfig.sitemap) {
+      await timedRun(
+        this.parseSitemap(urlExtractor),
+        SITEMAP_INITIAL_FETCH_TIMEOUT_SECS,
+        "Sitemap initial fetch timed out",
+        { sitemap: seed.crawlConfig.sitemap, seed: seed.url },
+        "sitemap",
+      );
     }
   }
 
   async queueUrl(
-    seedId: number,
-    url: string,
-    depth: number,
-    extraHops: number,
+    seed: ScopedSeed,
     logDetails: LogDetails = {},
     ts = 0,
-    pageid?: string,
+    pageId?: string,
   ) {
-    if (this.configManager.config.limitHit) {
+    if (this.seed.crawlConfig.limitHit) {
       return false;
     }
 
     if (!this.crawlState) {
       return false;
     }
-    const result = await this.crawlState.addToQueue(
-      { url, seedId, depth, extraHops, ts, pageid },
-      this.configManager.config.pageLimit,
-    );
+    const result = await this.crawlState.addToQueue({
+      url: seed.url,
+      pageid: pageId,
+      ts,
+      depth: seed.crawlConfig.depth,
+      extraHops: seed.crawlConfig.extraHops,
+      seedId: seed.id.toString(),
+    });
 
     switch (result) {
       case QueueState.ADDED:
-        logger.debug("Queued new page url", { url, ...logDetails }, "links");
+        logger.debug(
+          "Queued new page url",
+          { url: seed.url, ...logDetails },
+          "links",
+        );
         return true;
 
       case QueueState.LIMIT_HIT:
         logger.debug(
           "Not queued page url, at page limit",
-          { url, ...logDetails },
+          { url: seed.url, ...logDetails },
           "links",
         );
-        this.configManager.config.limitHit = true;
+        this.seed.crawlConfig.limitHit = true;
         return false;
 
       case QueueState.DUPE_URL:
         logger.debug(
           "Not queued page url, already seen",
-          { url, ...logDetails },
+          { url: seed.url, ...logDetails },
           "links",
         );
         return false;
@@ -367,27 +366,21 @@ export class StateManager {
   async closeLog(): Promise<void> {
     // close file-based log
     logger.setExternalLogStream(null);
-    if (!this.configManager.config.logFH) {
+    if (!this.config.logFH) {
       return;
     }
-    this.configManager.config.logFH = null;
+    this.config.logFH = null;
   }
 
   async isInScope(
     {
-      seedId,
+      seed,
       url,
       depth,
       extraHops,
-    }: { seedId: number; url: string; depth: number; extraHops: number },
+    }: { seed: ScopedSeed; url: string; depth: number; extraHops: number },
     logDetails = {},
   ): Promise<boolean> {
-    const seed = await this.crawlState.getSeedAt(
-      this.configManager.config.seeds,
-      this.configManager.config.numOriginalSeeds,
-      seedId,
-    );
-
     return !!seed.isIncluded(url, depth, extraHops, logDetails);
   }
 
@@ -401,38 +394,38 @@ export class StateManager {
 
       await this.crawlState.markFinished(url);
 
-      if (this.configManager.config.healthChecker) {
-        this.configManager.config.healthChecker.resetErrors();
+      if (this.config.healthChecker) {
+        this.config.healthChecker.resetErrors();
       }
 
       await this.serializeConfig(false);
 
       await this.checkLimits(
-        this.configManager.config.params,
-        this.configManager.config.collDir,
+        this.config.params,
+        this.config.collDir,
       );
     } else {
       await this.crawlState.markFailed(url);
 
-      if (this.configManager.config.healthChecker) {
-        this.configManager.config.healthChecker.incError();
+      if (this.config.healthChecker) {
+        this.config.healthChecker.incError();
       }
 
       await this.serializeConfig(false);
 
-      if (depth === 0 && this.configManager.config.params.failOnFailedSeed) {
+      if (depth === 0 && this.config.params.failOnFailedSeed) {
         logger.fatal("Seed Page Load Failed, failing crawl", {}, "general", 1);
       }
 
       await this.checkLimits(
-        this.configManager.config.params,
-        this.configManager.config.collDir,
+        this.config.params,
+        this.config.collDir,
       );
     }
   }
 
   async serializeConfig(done = false) {
-    switch (this.configManager.config.params.saveState) {
+    switch (this.config.params.saveState) {
       case "never":
         return;
 
@@ -455,34 +448,34 @@ export class StateManager {
     if (!done) {
       // if not done, save state only after specified interval has elapsed
       if (
-        secondsElapsed(this.configManager.config.lastSaveTime, now) <
-        this.configManager.config.params.saveStateInterval
+        secondsElapsed(this.config.lastSaveTime, now) <
+        this.config.params.saveStateInterval
       ) {
         return;
       }
     }
 
-    this.configManager.config.lastSaveTime = now.getTime();
+    this.config.lastSaveTime = now.getTime();
 
     const ts = now.toISOString().slice(0, 19).replace(/[T:-]/g, "");
 
     const crawlDir = path.join(
-      this.configManager.config.collDir,
+      this.config.collDir,
       "collections",
     );
 
     await fsp.mkdir(crawlDir, { recursive: true });
 
-    const filenameOnly = `crawl-${ts}-${this.configManager.config.params.crawlId}.yaml`;
+    const filenameOnly = `crawl-${ts}-${this.config.params.crawlId}.yaml`;
 
     const filename = path.join(crawlDir, filenameOnly);
 
     const state = await this.crawlState.serialize();
 
-    if (this.configManager.config.params.origConfig) {
-      this.configManager.config.params.origConfig.state = state;
+    if (this.config.params.origConfig) {
+      this.config.params.origConfig.state = state;
     }
-    const res = yaml.dump(this.configManager.config.params.origConfig, {
+    const res = yaml.dump(this.config.params.origConfig, {
       lineWidth: -1,
     });
     try {
@@ -493,13 +486,13 @@ export class StateManager {
       return;
     }
 
-    this.configManager.config.saveStateFiles.push(filename);
+    this.config.saveStateFiles.push(filename);
 
     if (
-      this.configManager.config.saveStateFiles.length >
-      this.configManager.config.params.saveStateHistory
+      this.config.saveStateFiles.length >
+      this.config.params.saveStateHistory
     ) {
-      const oldFilename = this.configManager.config.saveStateFiles.shift();
+      const oldFilename = this.config.saveStateFiles.shift();
       logger.info(`Removing old save-state: ${oldFilename}`);
       try {
         await fsp.unlink(oldFilename || "");
@@ -512,8 +505,7 @@ export class StateManager {
   async loadExtraSeeds(seeds: ScopedSeed[]) {
     const extraSeeds = await this.crawlState.getExtraSeeds();
 
-    for (const { origSeedId, newUrl } of extraSeeds) {
-      const seed = seeds[origSeedId];
+    for (const { seed, newUrl } of extraSeeds) {
       seeds.push(seed.newScopedSeed(newUrl));
     }
   }

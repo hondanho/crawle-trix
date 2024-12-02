@@ -8,10 +8,11 @@ import {
 } from "../util/constants.js";
 import { Browser } from "../util/browser.js";
 import { formatErr, logger } from "../util/logger.js";
-import { ConfigManager, CrawlerConfig } from "./config-manager.js";
 import { collectCustomBehaviors } from "../util/file_reader.js";
 import { sleep, timedRun } from "../util/timing.js";
 import { WorkerOpts } from "../util/worker.js";
+import { ScopedSeed } from "../util/seeds.js";
+import { CrawlerConfig } from "./configmanager.js";
 
 const behaviors = fs.readFileSync(
   new URL(
@@ -24,18 +25,19 @@ const behaviors = fs.readFileSync(
 // Quản lý xử lý page
 export class PageManager {
   private browser: Browser;
-  private configManager: ConfigManager;
+  private config: CrawlerConfig;
+  private seed: ScopedSeed;
 
-  constructor(browser: Browser, configEnv: ConfigManager) {
+  constructor(browser: Browser, seed: ScopedSeed) {
     this.browser = browser;
-    this.configManager = configEnv;
+    this.config = seed.config;
+    this.seed = seed;
   }
 
   async setupPage({
     page,
     workerid,
     cdp,
-    seedId,
     callbacks,
     frameIdToExecId,
     isAuthSet,
@@ -45,36 +47,30 @@ export class PageManager {
     await this.setupExecContextEvents(cdp, frameIdToExecId);
 
     if (
-      (this.configManager.config.adBlockRules &&
-        this.configManager.config.params.blockAds) ||
-      this.configManager.config.blockRules ||
-      this.configManager.config.originOverride
+      (this.seed.crawlConfig.adBlockRules &&
+        this.seed.crawlConfig.blockAds) ||
+      this.seed.crawlConfig.blockRules ||
+      this.seed.crawlConfig.originOverride
     ) {
       await page.setRequestInterception(true);
 
-      if (
-        this.configManager.config.adBlockRules &&
-        this.configManager.config.params.blockAds
-      ) {
-        await this.configManager.config.adBlockRules.initPage(
-          this.browser,
-          page,
-        );
+      if (this.seed.crawlConfig.adBlockRules && this.seed.crawlConfig.blockAds) {
+        await this.seed.crawlConfig.adBlockRules.initPage(this.browser, page);
       }
 
-      if (this.configManager.config.blockRules) {
-        await this.configManager.config.blockRules.initPage(this.browser, page);
+      if (this.seed.crawlConfig.blockRuleOpts) {
+        await this.seed.crawlConfig.blockRuleOpts.initPage(this.browser, page);
       }
 
-      if (this.configManager.config.originOverride) {
-        await this.configManager.config.originOverride.initPage(
+      if (this.seed.crawlConfig.originOverrideOpts) {
+        await this.seed.crawlConfig.originOverrideOpts.initPage(
           this.browser,
           page,
         );
       }
     }
 
-    if (this.configManager.config.params.logging.includes("jserrors")) {
+    if (this.config.params.logging.includes("jserrors")) {
       page.on("console", (msg) => {
         if (msg.type() === "error") {
           logger.warn(
@@ -99,31 +95,31 @@ export class PageManager {
       (url: string) => callbacks.addLink && callbacks.addLink(url),
     );
 
-    if (this.configManager.config.params.behaviorOpts) {
+    if (this.seed.crawlConfig.behaviorOpts) {
       await page.exposeFunction(BEHAVIOR_LOG_FUNC, () => {});
       await this.browser.addInitScript(page, behaviors);
 
       const initScript = `
-self.__bx_behaviors.init(${this.configManager.config.params.behaviorOpts}, false);
-${this.configManager.config.customBehaviors}
+self.__bx_behaviors.init(${this.seed.crawlConfig.behaviorOpts}, false);
+${this.seed.crawlConfig.customBehaviorsOtps}
 self.__bx_behaviors.selectMainBehavior();
 `;
       if (
-        !this.configManager.config.behaviorsChecked &&
-        this.configManager.config.customBehaviors
+        !this.seed.crawlConfig.behaviorsChecked &&
+        this.seed.crawlConfig.customBehaviorsOtps
       ) {
         await this.checkBehaviorScripts(cdp);
-        this.configManager.config.behaviorsChecked = true;
+        this.seed.crawlConfig.behaviorsChecked = true;
       }
 
       await this.browser.addInitScript(page, initScript);
     }
 
-    const auth = this.configManager.config.seeds[seedId].authHeader();
+    const auth = this.seed.authHeader();
     if (auth) {
       logger.debug("Setting HTTP basic auth for seed", {
-        seedId,
-        seedUrl: this.configManager.config.seeds[seedId].url,
+        seed: this.seed,
+        seedUrl: this.seed.url,
       });
     }
 
@@ -136,7 +132,7 @@ self.__bx_behaviors.selectMainBehavior();
   }
 
   async checkBehaviorScripts(cdp: CDPSession) {
-    const sources = this.configManager.config.params.customBehaviors;
+    const sources = this.seed.crawlConfig.customBehaviors;
 
     if (!sources) {
       return;
@@ -159,11 +155,11 @@ self.__bx_behaviors.selectMainBehavior();
       logger.warn("Waiting for custom page load failed", e, "behavior");
     }
 
-    if (this.configManager.config.params.postLoadDelay) {
+    if (this.seed.crawlConfig.postLoadDelay) {
       logger.info("Awaiting post load delay", {
-        seconds: this.configManager.config.params.postLoadDelay,
+        seconds: this.seed.crawlConfig.postLoadDelay,
       });
-      await sleep(this.configManager.config.params.postLoadDelay);
+      await sleep(this.seed.crawlConfig.postLoadDelay);
     }
   }
 
@@ -204,8 +200,8 @@ self.__bx_behaviors.selectMainBehavior();
       res = false;
     } else {
       res =
-        this.configManager.config.adBlockRules &&
-        !this.configManager.config.adBlockRules.isAdUrl(frameUrl);
+        this.seed.crawlConfig.adBlockRules &&
+        !this.seed.crawlConfig.adBlockRules.isAdUrl(frameUrl);
     }
     return res ? frame : null;
   }
@@ -214,7 +210,6 @@ self.__bx_behaviors.selectMainBehavior();
     { data, type }: { data: string; type: string },
     pageUrl: string,
     workerid: number,
-    config: CrawlerConfig,
   ) {
     let behaviorLine;
     let message;
@@ -236,9 +231,9 @@ self.__bx_behaviors.selectMainBehavior();
     switch (type) {
       case "info":
         behaviorLine = JSON.stringify(data);
-        if (behaviorLine !== config.behaviorLastLine) {
+        if (behaviorLine !== this.seed.crawlConfig.behaviorLastLine) {
           logger.info(message, details, "behaviorScript");
-          config.behaviorLastLine = behaviorLine;
+          this.seed.crawlConfig.behaviorLastLine = behaviorLine;
         }
         break;
 

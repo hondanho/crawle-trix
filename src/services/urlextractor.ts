@@ -8,28 +8,38 @@ import {
 } from "../util/constants.js";
 import { LoadState, PageState } from "../util/state.js";
 import { QueueState } from "../util/state.js";
-import { ConfigManager } from "./config-manager.js";
-import { StateManager } from "./state-manager.js";
+import { CrawlerConfig } from "./configmanager.js";
+import { StateManager } from "./statemanager.js";
 import { timedRun } from "../util/timing.js";
-import { PageManager } from "./page-manager.js";
+import { PageManager } from "./pagemanager.js";
 import { isHTMLMime } from "../util/reqresp.js";
+import { ScopedSeed } from "../util/seeds.js";
 export class URLExtractor {
-  private configManager: ConfigManager;
+  private config: CrawlerConfig;
   private stateManager: StateManager;
   private pageManager: PageManager;
-
+  private seed: ScopedSeed;
   constructor(
-    configEnv: ConfigManager,
     stateManager: StateManager,
     pageManager: PageManager,
+    seed: ScopedSeed,
   ) {
-    this.configManager = configEnv;
+    this.config = seed.config;
     this.stateManager = stateManager;
     this.pageManager = pageManager;
+    this.seed = seed;
   }
 
-  async preExtractLinks(crawledData: any, data: PageState, page: Page) {
-    const { url, seedId, extraHops } = data;
+  async preExtractLinks({
+    crawledData,
+    data,
+    page,
+  }: {
+    crawledData: any;
+    data: PageState;
+    page: Page;
+  }) {
+    const { url, extraHops } = data;
     // Update state
     if (!crawledData.response) {
       throw new Error("no response for page load, assuming failed");
@@ -39,24 +49,18 @@ export class URLExtractor {
     const resp = crawledData.response;
     const respUrl = resp.url();
 
-    if (this.configManager.config.params.depth === 0 && respUrl !== url) {
-      data.seedId = await this.stateManager.crawlState.addExtraSeed(
-        this.configManager.config.seeds,
-        this.configManager.config.seeds.length,
-        data.seedId,
-        respUrl,
-      );
+    if (this.config.params.depth === 0 && respUrl !== url) {
+      await this.stateManager.crawlState.addExtraSeed(this.seed, respUrl);
       logger.info("Seed page redirected, adding redirected seed", {
         origUrl: url,
         newUrl: respUrl,
-        seedId: data.seedId,
       });
     }
     data.status = resp?.status() || 200;
     const isChromeError = page.url().startsWith("chrome-error://");
     let failed = isChromeError;
     if (
-      this.configManager.config.params.failOnInvalidStatus &&
+      this.config.params.failOnInvalidStatus &&
       data.status >= 400
     ) {
       // Handle 4xx or 5xx response as a page load error
@@ -98,22 +102,22 @@ export class URLExtractor {
       .frames()
       .filter((frame) => this.pageManager.shouldIncludeFrame(frame));
 
-    const seed = await this.stateManager.crawlState.getSeedAt(
-      this.configManager.config.seeds,
-      this.configManager.config.numOriginalSeeds,
-      seedId,
-    );
+    // const seed = await this.stateManager.crawlState.getSeedAt(
+    //   this.config.seeds,
+    //   this.config.numOriginalSeeds,
+    //   seedId,
+    // );
 
-    if (!seed) {
+    if (!this.seed) {
       logger.error(
         "Seed not found, likely invalid crawl state - skipping link extraction and behaviors",
-        { seedId },
+        { seed: this.seed },
       );
       return;
     }
 
     // skip extraction if at max depth
-    if (seed.isAtMaxDepth(this.configManager.config.params.depth, extraHops)) {
+    if (this.seed.isAtMaxDepth(this.config.params.depth, extraHops)) {
       logger.debug("Skipping Link Extraction, At Max Depth", {}, "links");
       return;
     }
@@ -126,11 +130,10 @@ export class URLExtractor {
     selectors: ExtractSelector[],
     logDetails: LogDetails,
   ) {
-    const { seedId, depth, extraHops = 0, filteredFrames, callbacks } = data;
+    const { depth, extraHops = 0, filteredFrames, callbacks } = data;
 
     callbacks.addLink = async (url: string) => {
       await this.queueInScopeUrls(
-        seedId,
         [url],
         depth,
         extraHops,
@@ -200,7 +203,6 @@ export class URLExtractor {
   }
 
   async queueInScopeUrls(
-    seedId: number,
     urls: string[],
     depth: number,
     extraHops = 0,
@@ -219,7 +221,6 @@ export class URLExtractor {
             url: possibleUrl,
             extraHops: newExtraHops,
             depth,
-            seedId,
             noOOS,
           },
           logDetails,
@@ -233,7 +234,6 @@ export class URLExtractor {
 
         if (url) {
           await this.queueUrl(
-            seedId,
             url,
             depth,
             isOOS ? newExtraHops : extraHops,
@@ -248,13 +248,11 @@ export class URLExtractor {
 
   protected getScope(
     {
-      seedId,
       url,
       depth,
       extraHops,
       noOOS,
     }: {
-      seedId: number;
       url: string;
       depth: number;
       extraHops: number;
@@ -262,7 +260,7 @@ export class URLExtractor {
     },
     logDetails = {},
   ) {
-    return this.configManager.config.seeds[seedId].isIncluded(
+    return this.seed.isIncluded(
       url,
       depth,
       extraHops,
@@ -272,21 +270,20 @@ export class URLExtractor {
   }
 
   async queueUrl(
-    seedId: number,
     url: string,
     depth: number,
     extraHops: number,
     logDetails: LogDetails = {},
     ts = 0,
-    pageid?: string,
+    pageId?: string,
   ) {
-    if (this.configManager.config.limitHit) {
+    if (this.seed.crawlConfig.limitHit) {
       return false;
     }
 
     const result = await this.stateManager.crawlState?.addToQueue(
-      { url, seedId, depth, extraHops, ts, pageid },
-      this.configManager.config.pageLimit,
+      { pageid: pageId, ts, depth, extraHops, url, seedId: this.seed.id.toString() },
+      this.seed.crawlConfig.pageLimit,
     );
 
     switch (result) {
@@ -300,7 +297,7 @@ export class URLExtractor {
           { url, ...logDetails },
           "links",
         );
-        this.configManager.config.limitHit = true;
+        this.seed.crawlConfig.limitHit = true;
         return false;
 
       case QueueState.DUPE_URL:

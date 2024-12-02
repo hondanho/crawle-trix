@@ -1,24 +1,18 @@
-import { CrawlerArgs } from "../util/argParser.js";
+import { CrawlerArgs, parseArgs } from "../util/argParser.js";
 import path from "path";
-import os from "os";
 import fsp from "fs/promises";
 import fs, { WriteStream } from "fs";
-import { HTTPResponse, Page } from "puppeteer-core";
+import { Page } from "puppeteer-core";
 import child_process from "child_process";
 
 import { logger } from "../util/logger.js";
 import { PageState } from "../util/state.js";
-import { ScopedSeed } from "../util/seeds.js";
-import { AdBlockRules } from "../util/blockrules.js";
-import { BlockRules } from "../util/blockrules.js";
 import { HealthChecker } from "../util/healthcheck.js";
 import { OriginOverride } from "../util/originoverride.js";
-import { Browser } from "../util/browser.js";
 import { Crawler } from "./crawler.js";
-import { DISPLAY, PAGE_OP_TIMEOUT_SECS } from "../util/constants.js";
-import { collectCustomBehaviors, getInfoString } from "../util/file_reader.js";
+import { DISPLAY } from "../util/constants.js";
+import { getInfoString } from "../util/file_reader.js";
 import { ChildProcess } from "child_process";
-import { initProxy } from "../util/proxy.js";
 
 const RUN_DETACHED = process.env.DETACHED_CHILD_PROC == "1";
 
@@ -29,60 +23,27 @@ export interface CrawlerConfig {
   logDir: string;
   logFilename: string;
 
-  headers: Record<string, string>;
-
   logFH: WriteStream | null;
 
-  crawlId: string;
-
   startTime: number;
-
-  limitHit: boolean;
-  pageLimit: number;
 
   saveStateFiles: string[];
   lastSaveTime: number;
 
-  maxPageTime: number;
-
-  resources: { url: string; type: string; response?: HTTPResponse }[];
-
-  seeds: ScopedSeed[];
-  numOriginalSeeds: number;
-
-  emulateDevice: Record<string, any>;
-
-  captureBasePrefix: string;
-
   infoString: string;
 
-  gotoOpts: Record<string, any>;
-
   archivesDir: string;
-
-  blockRules: BlockRules | null;
-  adBlockRules: AdBlockRules | null;
 
   healthChecker: HealthChecker | null;
   originOverride: OriginOverride | null;
 
-  interrupted: boolean;
-  browserCrashed: boolean;
   finalExit: boolean;
   uploadAndDeleteLocal: boolean;
   done: boolean;
   postCrawling: boolean;
 
-  customBehaviors: string;
-  behaviorsChecked: boolean;
-  behaviorLastLine?: string;
-
-  browser: Browser;
-
   maxHeapUsed: number;
   maxHeapTotal: number;
-
-  proxyServer?: string;
 
   driver:
     | ((opts: {
@@ -93,7 +54,6 @@ export interface CrawlerConfig {
     | null;
 }
 
-// Quản lý configuration và khởi tạo
 export class ConfigManager {
   public config: CrawlerConfig;
 
@@ -102,28 +62,13 @@ export class ConfigManager {
   }
 
   async initializeConfig(params: CrawlerArgs): Promise<CrawlerConfig> {
+    // global config
     const collection = this.getCollectionName(params);
     const paths = this.initializePaths(params, collection);
-
     const logFilename = path.join(
       paths.logDir,
       `crawl-${new Date().toISOString().replace(/[^\d]/g, "")}.log`,
     );
-
-    // Tính toán maxPageTime
-    const maxPageTime =
-      params.pageLoadTimeout +
-      params.behaviorTimeout +
-      PAGE_OP_TIMEOUT_SECS * 2 +
-      params.pageExtraDelay;
-
-    // Tính pageLimit
-    let pageLimit = params.pageLimit;
-    if (params.maxPageLimit) {
-      pageLimit = pageLimit
-        ? Math.min(pageLimit, params.maxPageLimit)
-        : params.maxPageLimit;
-    }
 
     if (params.overwrite) {
       try {
@@ -163,66 +108,26 @@ export class ConfigManager {
       logFilename,
       archivesDir: paths.archivesDir,
 
-      // Headers & crawl info
-      headers: {},
-      crawlId: process.env.CRAWL_ID || os.hostname(),
       startTime: Date.now(),
-
-      // Limits
-      limitHit: false,
-      pageLimit,
-      maxPageTime,
 
       // State
       saveStateFiles: [],
       lastSaveTime: 0,
 
-      // Resources
-      resources: [],
-
-      // Seeds
-      seeds: params.scopedSeeds as ScopedSeed[],
-      numOriginalSeeds: (params.scopedSeeds as ScopedSeed[]).length ?? 0,
-
-      // Browser config
-      emulateDevice: params.emulateDevice || {},
-      gotoOpts: {
-        waitUntil: params.waitUntil,
-        timeout: params.pageLoadTimeout * 1000,
-      },
-
-      // Rules
-      blockRules: null,
-      adBlockRules: null,
-
-      // Status flags
-      interrupted: false,
-      browserCrashed: false,
       finalExit: false,
       uploadAndDeleteLocal: false,
       done: false,
       postCrawling: false,
 
-      // Behaviors
-      customBehaviors: params.customBehaviors
-        ? await this.loadCustomBehaviors(params.customBehaviors as string[])
-        : "",
-      behaviorsChecked: false,
-
       // Other
       logFH: null,
-      captureBasePrefix: "",
       infoString: "",
       healthChecker: null,
       originOverride: null,
-      browser: new Browser(),
       maxHeapUsed: 0,
       maxHeapTotal: 0,
       driver: null,
     };
-
-    this.configureUA(this.config);
-    this.config.proxyServer = await initProxy(this.config.params, RUN_DETACHED);
 
     const subprocesses: ChildProcess[] = [];
     process.on("exit", () => {
@@ -234,76 +139,13 @@ export class ConfigManager {
     return this.config;
   }
 
-  async loadCustomBehaviors(sources: string[]) {
-    let str = "";
-
-    for (const { contents } of await collectCustomBehaviors(sources)) {
-      str += `self.__bx_behaviors.load(${contents});\n`;
-    }
-
-    return str;
+  async init() {
+    const params = parseArgs() as CrawlerArgs;
+    await this.initializeConfig(params);
+    await this.initDirectories();
+    await this.initLogging();
   }
-
-  // Tách các phương thức khởi tạo config thành các hàm nhỏ hơn
-  private getCollectionName(params: CrawlerArgs): string {
-    return (
-      params.collection ||
-      "crawl-" + new Date().toISOString().slice(0, 19).replace(/[T:-]/g, "")
-    );
-  }
-
-  public async getBrowserOptions() {
-    return {
-      profileUrl: this.config.params.profile,
-      headless: this.config.params.headless,
-      emulateDevice: this.config.emulateDevice,
-      swOpt: this.config.params.serviceWorker,
-      chromeOptions: {
-        proxy: this.config.proxyServer,
-        userAgent: this.config.emulateDevice.userAgent,
-        extraArgs: this.extraChromeArgs(),
-      },
-
-      ondisconnect: (err: any) => {
-        this.config.interrupted = true;
-        logger.error(
-          "Browser disconnected (crashed?), interrupting crawl",
-          err,
-          "browser",
-        );
-        this.config.browserCrashed = true;
-      },
-    } as any;
-  }
-
-  extraChromeArgs() {
-    const args = [];
-    if (this.config.params.lang) {
-      args.push(`--accept-lang=${this.config.params.lang}`);
-    }
-    return args;
-  }
-
-  configureUA(config: CrawlerConfig) {
-    // override userAgent
-    if (config.params.userAgent) {
-      config.emulateDevice.userAgent = config.params.userAgent;
-      return config.params.userAgent;
-    }
-
-    // if device set, it overrides the default Chrome UA
-    if (!config.emulateDevice.userAgent) {
-      config.emulateDevice.userAgent = config.browser.getDefaultUA();
-    }
-
-    // suffix to append to default userAgent
-    if (config.params.userAgentSuffix) {
-      config.emulateDevice.userAgent += " " + config.params.userAgentSuffix;
-    }
-
-    return config.emulateDevice.userAgent;
-  }
-
+  
   private initializePaths(params: CrawlerArgs, collection: string) {
     const cwd = params.cwd || process.cwd();
     const collDir = path.join(cwd, "collections", collection);
@@ -315,13 +157,13 @@ export class ConfigManager {
     };
   }
 
-  async initDirectories(): Promise<void> {
+  private async initDirectories(): Promise<void> {
     await fsp.mkdir(this.config.logDir, { recursive: true });
     await fsp.mkdir(this.config.archivesDir, { recursive: true });
     await fsp.mkdir(this.config.collDir, { recursive: true });
   }
 
-  async initLogging(): Promise<void> {
+  private async initLogging(): Promise<void> {
     const logFH = fs.createWriteStream(this.config.logFilename, { flags: "a" });
     logger.setExternalLogStream(logFH);
     logger.setDebugLogging(this.config.params.logging.includes("debug"));
@@ -337,7 +179,7 @@ export class ConfigManager {
     this.config.infoString = await getInfoString();
     logger.info(this.config.infoString);
 
-    logger.info("Seeds", this.config.params.scopedSeeds);
+    // logger.info("Seeds", this.config.params.scopedSeeds);
     logger.info("Link Selectors", this.config.params.selectLinks);
 
     if (this.config.params.behaviorOpts) {
@@ -360,5 +202,12 @@ export class ConfigManager {
         logger.debug("Skipping Xvfb on Windows platform");
       }
     }
+  }
+
+  private getCollectionName(params: CrawlerArgs): string {
+    return (
+      params.collection ||
+      "crawl-" + new Date().toISOString().slice(0, 19).replace(/[T:-]/g, "")
+    );
   }
 }

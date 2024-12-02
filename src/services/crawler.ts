@@ -1,50 +1,48 @@
-import { ConfigManager } from "./config-manager.js";
-import { StateManager } from "./state-manager.js";
-import { PageManager } from "./page-manager.js";
-import { URLExtractor } from "./url-extractor.js";
-import { DataCrawler } from "./data-crawler.js";
-import { CrawlerArgs, parseArgs } from "../util/argParser.js";
+import { CrawlerConfig } from "./configmanager.js";
+import { StateManager } from "./statemanager.js";
+import { PageManager } from "./pagemanager.js";
+import { URLExtractor } from "./urlextractor.js";
+import { DataCrawler } from "./datacrawler.js";
 import { logger } from "../util/logger.js";
 import { Browser } from "../util/browser.js";
 import { runWorkers, WorkerState } from "../util/worker.js";
+import { ScopedSeed } from "../util/seeds.js";
 
 export class Crawler {
-  configManager: ConfigManager;
+  config: CrawlerConfig;
   stateManager: StateManager;
   pageManager: PageManager;
   urlExtractor: URLExtractor;
   dataCrawler: DataCrawler;
-
   browser: Browser;
+  seed: ScopedSeed;
 
-  constructor() {
+  constructor(seed: ScopedSeed) {
+    this.seed = seed;
     this.browser = new Browser();
-    this.configManager = new ConfigManager();
-    this.stateManager = new StateManager(this.configManager);
-    this.pageManager = new PageManager(this.browser, this.configManager);
+    this.config = seed.config;
+    this.stateManager = new StateManager(this.seed);
+    this.pageManager = new PageManager(this.browser, this.seed);
     this.urlExtractor = new URLExtractor(
-      this.configManager,
       this.stateManager,
       this.pageManager,
+      this.seed,
     );
-    this.dataCrawler = new DataCrawler(this.configManager);
+    this.dataCrawler = new DataCrawler(this.seed);
   }
 
   async init(): Promise<void> {
-    const params = parseArgs() as CrawlerArgs;
-    await this.configManager.initializeConfig(params);
-    await this.configManager.initDirectories();
-    await this.configManager.initLogging();
+    await this.seed.init(this.browser);
     await this.stateManager.initCrawlStateInRedis();
-    await this.browser.launch(await this.configManager.getBrowserOptions());
   }
 
   async crawl(): Promise<void> {
     try {
-      await this.stateManager._addInitialSeeds(this.urlExtractor);
-      await runWorkers(this);
+      // merge seed with config
+      await this.stateManager._addInitialSeeds(this.seed, this.urlExtractor);
+      await runWorkers(this, this.seed);
 
-      this.configManager.config.postCrawling = true;
+      this.config.postCrawling = true;
       logger.success("Crawling done");
       logger.setExternalLogStream(null);
     } catch (e) {
@@ -63,18 +61,22 @@ export class Crawler {
 
     // Crawl data
     let crawledData: any;
-    if (this.configManager.config.driver) {
-      await this.configManager.config.driver({ page, data, crawler: this });
+    if (this.config.driver) {
+      await this.config.driver({ page, data, crawler: this });
     } else {
       crawledData = await this.dataCrawler.crawlPage(page, data.url);
     }
 
     // Extract URLs
-    await this.urlExtractor.preExtractLinks(crawledData, data, page);
+    await this.urlExtractor.preExtractLinks({
+      crawledData,
+      data,
+      page
+    });
     await this.urlExtractor.extractLinks(
       page,
       data,
-      this.configManager.config.params.selectLinks,
+      this.seed.crawlConfig.selectLinkOtps,
       data,
     );
   }

@@ -2,7 +2,7 @@ import mongoose, { Document, Schema } from "mongoose";
 
 // Interface cho Job
 export interface IJob extends Document {
-  sourceId: mongoose.Types.ObjectId; // Tham chiếu đến nguồn
+  seedId: mongoose.Types.ObjectId; // Tham chiếu đến nguồn
   url: string; // URL cần xử lý
   type: "crawl" | "process" | "publish"; // Loại công việc
   status: "pending" | "in_progress" | "completed" | "failed"; // Trạng thái công việc
@@ -12,9 +12,9 @@ export interface IJob extends Document {
 
 // Schema cho Job
 const JobSchema: Schema = new Schema({
-  sourceId: {
+  seedId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "Source",
+    ref: "Seed",
     required: true,
   },
   url: { type: String, required: true },

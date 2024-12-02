@@ -6,7 +6,7 @@ import { logger } from "./logger.js";
 import { MAX_DEPTH } from "./constants.js";
 import { ScopedSeed } from "./seeds.js";
 import { Frame } from "puppeteer-core";
-import { CrawlerConfig } from "../services/config-manager.js";
+import { CrawlerConfig } from "../services/configmanager.js";
 
 // ============================================================================
 export enum LoadState {
@@ -25,13 +25,10 @@ export enum QueueState {
 }
 
 // ============================================================================
-export type WorkerId = number;
-
-// ============================================================================
 export type QueueEntry = {
   added?: string;
   url: string;
-  seedId: number;
+  seedId: string;
   depth: number;
   extraHops: number;
   ts?: number;
@@ -39,9 +36,12 @@ export type QueueEntry = {
 };
 
 // ============================================================================
+export type WorkerId = number;
+
+// ============================================================================
 export type ExtraRedirectSeed = {
   newUrl: string;
-  origSeedId: number;
+  seed: ScopedSeed;
 };
 
 // ============================================================================
@@ -52,7 +52,6 @@ export type PageCallbacks = {
 // ============================================================================
 export class PageState {
   url: string;
-  seedId: number;
   depth: number;
   extraHops: number;
 
@@ -82,7 +81,6 @@ export class PageState {
 
   constructor(redisData: QueueEntry, config: CrawlerConfig) {
     this.url = redisData.url;
-    this.seedId = redisData.seedId;
     this.depth = redisData.depth;
     this.extraHops = redisData.extraHops || 0;
     if (redisData.ts) {
@@ -369,9 +367,7 @@ return inx;
     await this.redis.srem(this.skey, url);
   }
 
-  recheckScope(data: QueueEntry, seeds: ScopedSeed[]) {
-    const seed = seeds[data.seedId];
-
+  recheckScope(data: QueueEntry, seed: ScopedSeed) {
     return seed.isIncluded(data.url, data.depth, data.extraHops);
   }
 
@@ -413,7 +409,7 @@ return inx;
     await this.redis.set(`${this.key}:stopping`, "1");
   }
 
-  async processMessage(seeds: ScopedSeed[]) {
+  async processMessage(seed: ScopedSeed) {
     while (true) {
       const result = await this.redis.lpop(`${this.uid}:msg`);
       if (!result) {
@@ -427,9 +423,7 @@ return inx;
             if (!regex) {
               break;
             }
-            for (const seed of seeds) {
-              seed.addExclusion(regex);
-            }
+            seed.addExclusion(regex);
             // can happen async w/o slowing down crawling
             // each page is still checked if in scope before crawling, even while
             // queue is being filtered
@@ -443,9 +437,7 @@ return inx;
             if (!regex) {
               break;
             }
-            for (const seed of seeds) {
-              seed.removeExclusion(regex);
-            }
+            seed.removeExclusion(regex);
             break;
         }
       } catch (e) {
@@ -509,26 +501,13 @@ return inx;
   }
 
   //async addToQueue({url : string, seedId, depth = 0, extraHops = 0} = {}, limit = 0) {
-  async addToQueue(
-    {
-      url,
-      seedId,
-      depth = 0,
-      extraHops = 0,
-      ts = 0,
-      pageid = undefined,
-    }: QueueEntry,
-    limit = 0,
-  ) {
+  async addToQueue(data: QueueEntry, limit = 0) {
     const added = this._timestamp();
-    const data: QueueEntry = { added, url, seedId, depth, extraHops };
-
-    if (ts) {
-      data.ts = ts;
-    }
-    if (pageid) {
-      data.pageid = pageid;
-    }
+    const dataQueue: QueueEntry = {
+      ...data,
+      added,
+      seedId: data.seedId
+    };
 
     // return codes
     // 0 - url queued successfully
@@ -539,9 +518,9 @@ return inx;
       this.qkey,
       this.skey,
       this.esKey,
-      url,
-      this._getScore(data),
-      JSON.stringify(data),
+      dataQueue.url,
+      this._getScore(dataQueue),
+      JSON.stringify(dataQueue),
       limit,
     );
   }
@@ -665,7 +644,7 @@ return inx;
     return results;
   }
 
-  async load(state: SaveState, seeds: ScopedSeed[], checkScope: boolean) {
+  async load(state: SaveState, seed: ScopedSeed, checkScope: boolean) {
     // need to delete existing keys, if exist to fully reset state
     await this.redis.del(this.qkey);
     await this.redis.del(this.pkey);
@@ -683,18 +662,17 @@ return inx;
     }
 
     if (state.extraSeeds) {
-      const origLen = seeds.length;
 
       for (const extraSeed of state.extraSeeds) {
-        const { newUrl, origSeedId }: ExtraRedirectSeed = JSON.parse(extraSeed);
-        await this.addExtraSeed(seeds, origLen, origSeedId, newUrl);
+        const { newUrl }: ExtraRedirectSeed = JSON.parse(extraSeed);
+        await this.addExtraSeed(seed, newUrl);
       }
     }
 
     for (const json of state.queued) {
       const data = JSON.parse(json);
       if (checkScope) {
-        if (!this.recheckScope(data, seeds)) {
+        if (!this.recheckScope(data, seed)) {
           continue;
         }
       }
@@ -718,7 +696,7 @@ return inx;
       }
 
       if (checkScope) {
-        if (!this.recheckScope(data, seeds)) {
+        if (!this.recheckScope(data, seed)) {
           continue;
         }
       }
@@ -851,40 +829,35 @@ return inx;
 
   // add extra seeds from redirect
   async addExtraSeed(
-    seeds: ScopedSeed[],
-    origLength: number,
-    origSeedId: number,
+    seed: ScopedSeed,
     newUrl: string,
   ) {
-    if (!seeds[origSeedId]) {
+    if (!seed) {
       logger.fatal(
         "State load, original seed missing",
-        { origSeedId },
+        { seed },
         "state",
       );
     }
-    const redirectSeed: ExtraRedirectSeed = { origSeedId, newUrl };
+    const redirectSeed: ExtraRedirectSeed = { seed, newUrl };
     const seedData = JSON.stringify(redirectSeed);
-    const newSeedId =
-      origLength +
-      (await this.redis.addnewseed(
+    await this.redis.addnewseed(
         this.esKey,
         this.esMap,
         this.skey,
         seedData,
         newUrl,
-      ));
-    seeds[newSeedId] = seeds[origSeedId].newScopedSeed(newUrl);
+      );
+    seed = seed.newScopedSeed(newUrl);
 
     //const newSeedId = seeds.length - 1;
     //await this.redis.sadd(this.skey, newUrl);
     //await this.redis.lpush(this.esKey, JSON.stringify(redirectSeed));
-    return newSeedId;
   }
 
-  async getSeedAt(seeds: ScopedSeed[], origLength: number, newSeedId: number) {
-    if (seeds[newSeedId]) {
-      return seeds[newSeedId];
+  async getSeedAt(seedData: ScopedSeed, origLength: number, newSeedId: number) {
+    if (seedData) {
+      return seedData;
     }
 
     const newSeedDataList = await this.redis.lrange(
@@ -893,13 +866,13 @@ return inx;
       newSeedId - origLength,
     );
     if (newSeedDataList.length) {
-      const { origSeedId, newUrl } = JSON.parse(
+      const { seed, newUrl } = JSON.parse(
         newSeedDataList[0],
       ) as ExtraRedirectSeed;
-      seeds[newSeedId] = seeds[origSeedId].newScopedSeed(newUrl);
+      seedData = seed.newScopedSeed(newUrl);
     }
 
-    return seeds[newSeedId];
+    return seedData;
   }
 
   async getExtraSeeds() {

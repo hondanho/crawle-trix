@@ -1,7 +1,7 @@
 import connectDB from "./db.js";
 import { CrawledContentModel } from "./models/crawledcontent.js";
 import { JobModel } from "./models/job.js";
-import { SourceModel } from "./models/source.js";
+import { SeedModel } from "./models/seed.js";
 
 export const seedDatabase = async () => {
   try {
@@ -10,71 +10,99 @@ export const seedDatabase = async () => {
     console.log("Connected to MongoDB");
 
     // Xóa dữ liệu cũ nếu cần (Tùy chọn)
-    await SourceModel.deleteMany({});
+    await SeedModel.deleteMany({});
     await CrawledContentModel.deleteMany({});
     await JobModel.deleteMany({});
     console.log("Cleared old data");
 
     // Thêm dữ liệu mẫu cho nguồn crawl
-    const sources = await SourceModel.insertMany([
+    const seeds = await SeedModel.insertMany([
       {
-        name: "Example News Source",
-        url: "https://example.com/news",
-        selectors: {
-          title: "h1.article-title",
-          content: "div.article-content",
-          image: "img.article-image",
+        name: "Truyen Sex Crawler",
+        url: "https://truyensex.moe",
+        dataConfig: {
+          title: [
+            {
+              regex: "h1.entry-title",
+            },
+            {
+              selector: "h1.entry-title", 
+            }
+          ],
+          content: [
+            {
+              selector: "div.entry-content",
+            },
+          ],
+          image: [
+            {
+              selector: "img.wp-post-image",
+            },
+          ],
         },
-        schedule: "0 0 * * *", // Daily crawl
-      },
-      {
-        name: "Tech Blog",
-        url: "https://example.com/tech",
-        selectors: {
-          title: "h2.post-title",
-          content: "div.post-body",
-          image: "img.feature-image",
-        },
-        schedule: "0 12 * * *", // Crawl at noon daily
-      },
+        schedule: "0 */6 * * *",
+        crawlConfig: {
+          blockAds: true,
+          waitUntil: "domcontentloaded",
+          originOverride: false,
+          setJavaScriptEnabled: true,
+          enableBehaviors: false,
+          scopeType: "custom",
+          limitHit: false,
+          pageLimit: 10,
+          postLoadDelay: 0,
+          excludeStr: [
+            "https://truyensex.moe/gioi-thieu/",
+            "https://truyensex.moe/gioi-thieu/.*",
+            "https://truyensex.moe/quan-tri-huyen/",
+            "https://truyensex.moe/quan-tri-huyen/.*",
+            "https://truyensex.moe/tag/",
+            "https://truyensex.moe/tag/.*"
+          ],
+          sitemap: null,
+          depth: -1,
+          includeStr: [
+            "https://truyensex.moe/12-nu-than/",
+            "https://truyensex.moe/12-nu-than/.*"
+          ],
+          extraHops: 0,
+          auth: null,
+          maxExtraHops: 0,
+          maxDepth: 0,
+          blockRules: null,
+          customBehaviors: null,
+          behaviorsChecked: false,
+          behaviorLastLine: null,
+          maxPageTime: 0,
+          adBlockRules: null,
+          saveAllResources: true,
+          
+        }
+      }
     ]);
-    console.log("Seeded sources:", sources);
+    console.log("Seeded seeds:", seeds);
 
     // Thêm dữ liệu mẫu cho nội dung đã crawl
     const contents = await CrawledContentModel.insertMany([
       {
-        sourceId: sources[0]._id,
+        seedId: seeds[0]._id,
         url: "https://example.com/news/article1",
         title: "Example News Article 1",
         content: "This is the content of example news article 1.",
         images: ["https://example.com/images/article1.jpg"],
         status: "pending",
-      },
-      {
-        sourceId: sources[1]._id,
-        url: "https://example.com/tech/post1",
-        title: "Tech Blog Post 1",
-        content: "This is the content of tech blog post 1.",
-        images: ["https://example.com/images/post1.jpg"],
-        status: "processed",
-      },
+      }
     ]);
     console.log("Seeded crawled content:", contents);
 
     // Thêm dữ liệu mẫu cho công việc
     const jobs = await JobModel.insertMany([
       {
-        sourceId: sources[0]._id,
+        seedId: seeds[0]._id,
         url: "https://example.com/news/article1",
         type: "crawl",
         status: "completed",
-      },
-      {
-        sourceId: sources[1]._id,
-        url: "https://example.com/tech/post1",
-        type: "process",
-        status: "pending",
-      },
+      }
     ]);
     console.log("Seeded jobs:", jobs);
 

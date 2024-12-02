@@ -356,6 +356,10 @@ export async function downloadResource(
   archivesDir: string,
 ) {
   try {
+    if (url.startsWith("data:")) {
+      return; // Bỏ qua nếu là URL kiểu data
+    }
+
     const urlPath = getResourcePath(url);
     const fullPath = path.join(archivesDir, urlPath);
 
@@ -402,6 +406,10 @@ export async function downloadResourceFromUrl(
   archivesDir: string,
 ) {
   try {
+    if (url.startsWith("data:")) {
+      return; // Bỏ qua nếu là URL kiểu data
+    }
+
     const urlPath = getResourcePath(url);
     const fullPath = path.join(archivesDir, urlPath);
 
@@ -466,5 +474,6 @@ export function interpolateFilename(filename: string, crawlId: string) {
   filename = filename.replace("@hostname", os.hostname());
   filename = filename.replace("@hostsuffix", os.hostname().slice(-14));
   filename = filename.replace("@id", crawlId);
+  filename = filename.replaceAll(" ", "_");
   return filename;
 }

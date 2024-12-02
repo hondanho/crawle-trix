@@ -1,30 +1,22 @@
 import path from "path";
 import fs from "fs";
-import os from "os";
 
 import yaml from "js-yaml";
-import { KnownDevices as devices } from "puppeteer-core";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 
-import { createParser } from "css-selector-parser";
-
 import {
-  BEHAVIOR_LOG_FUNC,
   WAIT_UNTIL_OPTS,
   EXTRACT_TEXT_TYPES,
-  SERVICE_WORKER_OPTS,
-  DEFAULT_SELECTORS,
   ExtractSelector,
+  SERVICE_WORKER_OPTS,
 } from "./constants.js";
 import { ScopedSeed } from "./seeds.js";
-import { interpolateFilename } from "./storage.js";
 
 import {
   DEFAULT_EXCLUDE_LOG_CONTEXTS,
   LOG_CONTEXT_TYPES,
   LogContext,
-  logger,
 } from "./logger.js";
 import { SaveState } from "./state.js";
 
@@ -696,43 +688,44 @@ class ArgParser {
   }
 
   validateArgs(argv: any, isQA: boolean) {
-    argv.crawlId = argv.crawlId || process.env.CRAWL_ID || os.hostname();
-    argv.collection = interpolateFilename(argv.collection, argv.crawlId);
+    console.log("isQA", isQA);
+    // argv.crawlId = argv.crawlId || process.env.CRAWL_ID || os.hostname();
+    // argv.collection = interpolateFilename(argv.collection, argv.crawlId);
 
     // Check that the collection name is valid.
-    if (argv.collection.search(/^[\w][\w-]*$/) === -1) {
-      logger.fatal(
-        `\n${argv.collection} is an invalid collection name. Please supply a collection name only using alphanumeric characters and the following characters [_ - ]\n`,
-      );
-    }
+    // if (argv.collection.search(/^[\w][\w-]*$/) === -1) {
+    //   logger.fatal(
+    //     `\n${argv.collection} is an invalid collection name. Please supply a collection name only using alphanumeric characters and the following characters [_ - ]\n`,
+    //   );
+    // }
 
     // background behaviors to apply
-    if (argv.enableBehaviors) {
-      const behaviorOpts: { [key: string]: string | boolean } = {};
-      if (argv.behaviors.length > 0) {
-        argv.behaviors.forEach((x: string) => (behaviorOpts[x] = true));
-        behaviorOpts.log = BEHAVIOR_LOG_FUNC;
-        behaviorOpts.startEarly = true;
-        argv.behaviorOpts = JSON.stringify(behaviorOpts);
-      } else {
-        argv.behaviorOpts = "";
-      }
-    } else {
-      argv.behaviorOpts = "";
-    }
+    // if (argv.enableBehaviors) {
+    //   const behaviorOpts: { [key: string]: string | boolean } = {};
+    //   if (argv.behaviors.length > 0) {
+    //     argv.behaviors.forEach((x: string) => (behaviorOpts[x] = true));
+    //     behaviorOpts.log = BEHAVIOR_LOG_FUNC;
+    //     behaviorOpts.startEarly = true;
+    //     argv.behaviorOpts = JSON.stringify(behaviorOpts);
+    //   } else {
+    //     argv.behaviorOpts = "";
+    //   }
+    // } else {
+    //   argv.behaviorOpts = "";
+    // }
 
     argv.text = argv.text || [];
 
-    if (argv.mobileDevice) {
-      argv.emulateDevice = (devices as Record<string, any>)[
-        argv.mobileDevice.replace("-", " ")
-      ];
-      if (!argv.emulateDevice) {
-        logger.fatal("Unknown device: " + argv.mobileDevice);
-      }
-    } else {
-      argv.emulateDevice = { viewport: null };
-    }
+    // if (argv.mobileDevice) {
+    //   argv.emulateDevice = (devices as Record<string, any>)[
+    //     argv.mobileDevice.replace("-", " ")
+    //   ];
+    //   if (!argv.emulateDevice) {
+    //     logger.fatal("Unknown device: " + argv.mobileDevice);
+    //   }
+    // } else {
+    //   argv.emulateDevice = { viewport: null };
+    // }
 
     if (argv.seedFile) {
       const urlSeedFile = fs.readFileSync(argv.seedFile, "utf8");
@@ -749,29 +742,29 @@ class ArgParser {
       }
     }
 
-    let selectLinks: ExtractSelector[];
+    // let selectLinks: ExtractSelector[];
 
-    const parser = createParser();
+    // const parser = createParser();
 
-    if (argv.selectLinks) {
-      selectLinks = argv.selectLinks.map((x: string) => {
-        const parts = x.split("->");
-        const selector = parts[0];
-        const value = parts[1] || "";
-        const extract = parts.length > 1 ? value.replace("@", "") : "href";
-        const isAttribute = value.startsWith("@");
-        try {
-          parser(selector);
-        } catch (e) {
-          logger.fatal("Invalid Link Extraction CSS Selector", { selector });
-        }
-        return { selector, extract, isAttribute };
-      });
-    } else {
-      selectLinks = DEFAULT_SELECTORS;
-    }
+    // if (argv.selectLinks) {
+    //   selectLinks = argv.selectLinks.map((x: string) => {
+    //     const parts = x.split("->");
+    //     const selector = parts[0];
+    //     const value = parts[1] || "";
+    //     const extract = parts.length > 1 ? value.replace("@", "") : "href";
+    //     const isAttribute = value.startsWith("@");
+    //     try {
+    //       parser(selector);
+    //     } catch (e) {
+    //       logger.fatal("Invalid Link Extraction CSS Selector", { selector });
+    //     }
+    //     return { selector, extract, isAttribute };
+    //   });
+    // } else {
+    //   selectLinks = DEFAULT_SELECTORS;
+    // }
 
-    argv.selectLinks = selectLinks;
+    // argv.selectLinks = selectLinks;
 
     if (argv.netIdleWait === -1) {
       if (argv.scopeType === "page" || argv.scopeType === "page-spa") {
@@ -782,48 +775,48 @@ class ArgParser {
       //logger.debug(`Set netIdleWait to ${argv.netIdleWait} seconds`);
     }
 
-    const scopedSeeds: ScopedSeed[] = [];
+    // const scopedSeeds: ScopedSeed[] = [];
 
-    if (!isQA) {
-      const scopeOpts = {
-        scopeType: argv.scopeType,
-        sitemap: argv.sitemap,
-        include: argv.include,
-        exclude: argv.exclude,
-        depth: argv.depth,
-        extraHops: argv.extraHops,
-      };
+    // if (!isQA) {
+    //   const scopeOpts = {
+    //     scopeType: argv.scopeType,
+    //     sitemap: argv.sitemap,
+    //     include: argv.include,
+    //     exclude: argv.exclude,
+    //     depth: argv.depth,
+    //     extraHops: argv.extraHops,
+    //   };
 
-      for (const seed of argv.seeds) {
-        const newSeed = typeof seed === "string" ? { url: seed } : seed;
+    //   for (const seed of argv.seeds) {
+    //     const newSeed = typeof seed === "string" ? { url: seed } : seed;
 
-        try {
-          scopedSeeds.push(new ScopedSeed({ ...scopeOpts, ...newSeed }));
-        } catch (e: any) {
-          logger.error("Failed to create seed", {
-            error: e.toString(),
-            ...scopeOpts,
-            ...newSeed,
-          });
-          if (argv.failOnFailedSeed) {
-            logger.fatal(
-              "Invalid seed specified, aborting crawl",
-              { url: newSeed.url },
-              "general",
-              1,
-            );
-          }
-        }
-      }
+    //     try {
+    //       scopedSeeds.push(new ScopedSeed({ ...scopeOpts, ...newSeed }, argv.config));
+    //     } catch (e: any) {
+    //       logger.error("Failed to create seed", {
+    //         error: e.toString(),
+    //         ...scopeOpts,
+    //         ...newSeed,
+    //       });
+    //       if (argv.failOnFailedSeed) {
+    //         logger.fatal(
+    //           "Invalid seed specified, aborting crawl",
+    //           { url: newSeed.url },
+    //           "general",
+    //           1,
+    //         );
+    //       }
+    //     }
+    //   }
 
-      if (!scopedSeeds.length) {
-        logger.fatal("No valid seeds specified, aborting crawl");
-      }
-    } else if (!argv.qaSource) {
-      logger.fatal("--qaSource required for QA mode");
-    }
+    //   if (!scopedSeeds.length) {
+    //     logger.fatal("No valid seeds specified, aborting crawl");
+    //   }
+    // } else if (!argv.qaSource) {
+    //   logger.fatal("--qaSource required for QA mode");
+    // }
 
-    argv.scopedSeeds = scopedSeeds;
+    // argv.scopedSeeds = scopedSeeds;
 
     // Resolve statsFilename
     if (argv.statsFilename) {

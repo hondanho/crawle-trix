@@ -2,7 +2,7 @@ import mongoose, { Document, Schema } from "mongoose";
 
 // Interface cho Crawled Content
 export interface ICrawledContent extends Document {
-  sourceId: mongoose.Types.ObjectId; // Tham chiếu đến nguồn
+  seedId: mongoose.Types.ObjectId; // Tham chiếu đến nguồn
   url: string;
   title: string;
   content: string;
@@ -14,9 +14,9 @@ export interface ICrawledContent extends Document {
 
 // Schema cho Crawled Content
 const CrawledContentSchema: Schema = new Schema({
-  sourceId: {
+  seedId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "Source",
+    ref: "Seed",
     required: true,
   },
   url: { type: String, required: true },

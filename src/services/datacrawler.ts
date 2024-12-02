@@ -2,20 +2,24 @@ import { HTTPResponse, Page } from "puppeteer-core";
 
 import { logger } from "../util/logger.js";
 import { downloadAllResources, downloadResource } from "../util/storage.js";
-import { ConfigManager } from "./config-manager.js";
+import { CrawlerConfig } from "./configmanager.js";
+import { ScopedSeed } from "../util/seeds.js";
 
 export class DataCrawler {
-  private configManager: ConfigManager;
+  private config: CrawlerConfig;
+  private seed: ScopedSeed;
 
-  constructor(configEnv: ConfigManager) {
-    this.configManager = configEnv;
+  constructor(seed: ScopedSeed) {
+    this.config = seed.config;
+    this.seed = seed;
   }
 
   private resources: { url: string; type: string; response?: HTTPResponse }[] =
     [];
 
   async crawlPage(page: Page, url: string) {
-    const { archivesDir, params, gotoOpts } = this.configManager.config;
+    const { archivesDir, params } = this.config;
+    const gotoOpts = this.seed.crawlConfig.gotoOpts;
     const saveAllResources = params.saveAllResources;
     const originUrl = new URL(url);
     const originDomain = originUrl.origin;

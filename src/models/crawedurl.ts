@@ -2,7 +2,7 @@ import { Schema, model } from "mongoose";
 
 const CrawledUrlSchema = new Schema(
   {
-    sourceId: { type: Schema.Types.ObjectId, ref: "Source", required: true },
+    seedId: { type: Schema.Types.ObjectId, ref: "Seed", required: true },
     url: { type: String, required: true },
     status: {
       type: String,

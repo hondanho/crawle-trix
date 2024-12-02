@@ -2,7 +2,7 @@ import os from "os";
 
 import { logger, formatErr } from "./logger.js";
 import { sleep, timedRun } from "./timing.js";
-import { rxEscape } from "./seeds.js";
+import { rxEscape, ScopedSeed } from "./seeds.js";
 import { CDPSession, Page } from "puppeteer-core";
 import { PageState, WorkerId } from "./state.js";
 import { Crawler } from "../services/crawler.js";
@@ -17,7 +17,7 @@ export type WorkerOpts = {
   page: Page;
   cdp: CDPSession;
   workerid: WorkerId;
-  seedId: number;
+  seed: ScopedSeed;
   // eslint-disable-next-line @typescript-eslint/ban-types
   callbacks: Record<string, Function>;
   markPageUsed: () => void;
@@ -105,7 +105,7 @@ export class PageWorker {
     }
   }
 
-  async initPage(url: string, seedId: number): Promise<WorkerOpts> {
+  async initPage(url: string, seed: ScopedSeed): Promise<WorkerOpts> {
     let reuse = !this.crashed && !!this.opts && !!this.page;
     if (!this.alwaysReuse) {
       reuse = this.reuseCount <= MAX_REUSE && this.isSameOrigin(url);
@@ -150,7 +150,7 @@ export class PageWorker {
           page,
           cdp,
           workerid,
-          seedId: seedId,
+          seed,
           callbacks: this.callbacks,
           frameIdToExecId: new Map<string, number>(),
           markPageUsed: () => {
@@ -212,8 +212,8 @@ export class PageWorker {
         await sleep(0.5);
         logger.warn("Retrying getting new page", this.logDetails, "worker");
 
-        if (this.crawler.configManager.config.healthChecker) {
-          this.crawler.configManager.config.healthChecker.incError();
+        if (this.crawler.config.healthChecker) {
+          this.crawler.config.healthChecker.incError();
         }
       }
     }
@@ -268,11 +268,11 @@ export class PageWorker {
     }
   }
 
-  async run() {
+  async run(seed: ScopedSeed) {
     logger.info("Worker starting", { workerid: this.id }, "worker");
 
     try {
-      await this.runLoop();
+      await this.runLoop(seed);
       logger.info(
         "Worker done, all tasks complete",
         { workerid: this.id },
@@ -287,23 +287,21 @@ export class PageWorker {
     }
   }
 
-  async runLoop() {
+  async runLoop(seed: ScopedSeed) {
     const crawlState = this.crawler.stateManager.crawlState;
 
     let loggedWaiting = false;
 
     while (await this.crawler.stateManager.isCrawlRunning()) {
-      await crawlState.processMessage(this.crawler.configManager.config.seeds);
+      await crawlState.processMessage(seed);
 
-      const data = await crawlState.nextFromQueue(
-        this.crawler.configManager.config,
-      );
+      const data = await crawlState.nextFromQueue(this.crawler.config);
 
       // see if any work data in the queue
       if (data) {
         // filter out any out-of-scope pages right away
         if (
-          !(await this.crawler.stateManager.isInScope(data, this.logDetails))
+          !(await this.crawler.stateManager.isInScope({...data, seed}, this.logDetails))
         ) {
           logger.info("Page no longer in scope", data);
           await crawlState.markExcluded(data.url);
@@ -311,7 +309,7 @@ export class PageWorker {
         }
 
         // init page (new or reuse)
-        const opts = await this.initPage(data.url, data.seedId);
+        const opts = await this.initPage(data.url, seed);
 
         // run timed crawl of page
         await this.timedCrawlPage({ ...opts, data });
@@ -351,9 +349,9 @@ export class PageWorker {
 const workers: PageWorker[] = [];
 
 // ===========================================================================
-export async function runWorkers(crawler: Crawler, alwaysReuse = false) {
-  const numWorkers = crawler.configManager.config.params.workers;
-  const maxPageTime = crawler.configManager.config.maxPageTime;
+export async function runWorkers(crawler: Crawler, seed: ScopedSeed, alwaysReuse = false) {
+  const numWorkers = crawler.config.params.workers;
+  const maxPageTime = seed.crawlConfig.maxPageTime;
   logger.info(`Creating ${numWorkers} workers`, {}, "worker");
 
   let offset = 0;
@@ -376,7 +374,7 @@ export async function runWorkers(crawler: Crawler, alwaysReuse = false) {
     workers.push(new PageWorker(i + offset, crawler, maxPageTime, alwaysReuse));
   }
 
-  await Promise.allSettled(workers.map((worker) => worker.run()));
+  await Promise.allSettled(workers.map((worker) => worker.run(seed)));
 
   await crawler.browser.close();
 }
